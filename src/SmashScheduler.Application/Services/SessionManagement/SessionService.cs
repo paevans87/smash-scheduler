@@ -1,64 +1,33 @@
+using SmashScheduler.Application.Interfaces.Repositories;
 using SmashScheduler.Domain.Entities;
 using SmashScheduler.Domain.Enums;
-using SmashScheduler.Application.Interfaces.Repositories;
 
 namespace SmashScheduler.Application.Services.SessionManagement;
 
-public class SessionService : ISessionService
+public class SessionService(
+    ISessionRepository sessionRepository,
+    IClubRepository clubRepository,
+    IMatchRepository matchRepository) : ISessionService
 {
-    private readonly ISessionRepository _sessionRepository;
-    private readonly IClubRepository _clubRepository;
-    private readonly IMatchRepository _matchRepository;
-
-    public SessionService(
-        ISessionRepository sessionRepository,
-        IClubRepository clubRepository,
-        IMatchRepository matchRepository)
-    {
-        _sessionRepository = sessionRepository;
-        _clubRepository = clubRepository;
-        _matchRepository = matchRepository;
-    }
-
     public async Task<Session?> GetByIdAsync(Guid id)
     {
-        var session = await _sessionRepository.GetByIdAsync(id);
-
+        var session = await sessionRepository.GetByIdAsync(id);
         if (session != null)
         {
-// STUB:             session.SessionPlayers = await _sessionRepository.GetSessionPlayersAsync(id);
-            session.Matches = await _matchRepository.GetBySessionIdAsync(id);
+            session.Matches = await matchRepository.GetBySessionIdAsync(session.Id);
         }
-
         return session;
     }
 
-    public async Task<List<Session>> GetByClubIdAsync(Guid clubId)
+    public async Task<List<Session>> GetSessionsByClubIdAsync(Guid clubId)
     {
-        return await _sessionRepository.GetByClubIdAsync(clubId);
-    }
-
-// STUB:     public async Task<Session?> GetActiveSessionAsync(Guid clubId)
-    {
-// STUB:         var session = await _sessionRepository.GetActiveSessionAsync(clubId);
-
-        if (session != null)
-        {
-// STUB:             session.SessionPlayers = await _sessionRepository.GetSessionPlayersAsync(session.Id);
-            session.Matches = await _matchRepository.GetBySessionIdAsync(session.Id);
-        }
-
-        return session;
+        return await sessionRepository.GetByClubIdAsync(clubId);
     }
 
     public async Task<Session> CreateSessionAsync(Guid clubId, DateTime scheduledDateTime, int? courtCountOverride)
     {
-        var club = await _clubRepository.GetByIdAsync(clubId);
-
-        if (club == null)
-        {
-            throw new InvalidOperationException("Club not found");
-        }
+        var club = await clubRepository.GetByIdAsync(clubId);
+        if (club == null) throw new InvalidOperationException("Club not found");
 
         var session = new Session
         {
@@ -69,56 +38,17 @@ public class SessionService : ISessionService
             State = SessionState.Draft
         };
 
-        await _sessionRepository.InsertAsync(session);
+        await sessionRepository.InsertAsync(session);
         return session;
     }
 
-// STUB:     public async Task AddPlayerToSessionAsync(Guid sessionId, Guid playerId)
+    public async Task UpdateSessionAsync(Session session)
     {
-        var session = await _sessionRepository.GetByIdAsync(sessionId);
-
-        if (session == null)
-        {
-            throw new InvalidOperationException("Session not found");
-        }
-
-        if (session.State != SessionState.Draft)
-        {
-            throw new InvalidOperationException("Can only add players to draft sessions");
-        }
-
-        var sessionPlayer = new SessionPlayer
-        {
-            SessionId = sessionId,
-            PlayerId = playerId,
-            IsActive = true
-        };
-
-// STUB:         await _sessionRepository.AddPlayerToSessionAsync(sessionPlayer);
-    }
-
-// STUB:     public async Task RemovePlayerFromSessionAsync(Guid sessionId, Guid playerId)
-    {
-// STUB:         await _sessionRepository.RemovePlayerFromSessionAsync(sessionId, playerId);
-    }
-
-    public async Task MarkPlayerInactiveAsync(Guid sessionId, Guid playerId, bool isActive)
-    {
-// STUB:         var sessionPlayers = await _sessionRepository.GetSessionPlayersAsync(sessionId);
-        var sessionPlayer = sessionPlayers.FirstOrDefault(sp => sp.PlayerId == playerId);
-
-        if (sessionPlayer == null)
-        {
-            throw new InvalidOperationException("Player not found in session");
-        }
-
-        sessionPlayer.IsActive = isActive;
-// STUB:         await _sessionRepository.UpdateSessionPlayerAsync(sessionPlayer);
+        await sessionRepository.UpdateAsync(session);
     }
 
     public async Task DeleteSessionAsync(Guid id)
     {
-// STUB:         await _matchRepository.DeleteBySessionIdAsync(id);
-        await _sessionRepository.DeleteAsync(id);
+        await sessionRepository.DeleteAsync(id);
     }
 }
