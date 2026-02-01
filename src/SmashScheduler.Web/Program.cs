@@ -19,10 +19,11 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 
 builder.Services.AddMudServices();
 
-builder.Services.AddSingleton<IClubRepository, InMemoryClubRepository>();
-builder.Services.AddSingleton<IPlayerRepository, InMemoryPlayerRepository>();
-builder.Services.AddSingleton<ISessionRepository, InMemorySessionRepository>();
-builder.Services.AddSingleton<IMatchRepository, InMemoryMatchRepository>();
+builder.Services.AddSingleton<SmashSchedulerDb>();
+builder.Services.AddSingleton<IClubRepository, IndexedDbClubRepository>();
+builder.Services.AddSingleton<IPlayerRepository, IndexedDbPlayerRepository>();
+builder.Services.AddSingleton<ISessionRepository, IndexedDbSessionRepository>();
+builder.Services.AddSingleton<IMatchRepository, IndexedDbMatchRepository>();
 
 builder.Services.AddScoped<IClubService, ClubService>();
 builder.Services.AddScoped<IPlayerService, PlayerService>();
