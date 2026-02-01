@@ -1,5 +1,5 @@
 using SmashScheduler.Domain.Enums;
-using SmashScheduler.Infrastructure.Data.Repositories;
+using SmashScheduler.Application.Interfaces.Repositories;
 
 namespace SmashScheduler.Application.Services.SessionManagement;
 

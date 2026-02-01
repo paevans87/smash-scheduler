@@ -1,0 +1,53 @@
+@page "/clubs"
+@using SmashScheduler.Application.Services.ClubManagement
+@using SmashScheduler.Domain.Entities
+@using SmashScheduler.Domain.Enums
+@inject IClubService ClubService
+
+<PageTitle>Clubs</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">Clubs</MudText>
+
+@if (_clubs == null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudGrid>
+        @foreach (var club in _clubs)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard>
+                    <MudCardContent>
+                        <MudText Typo="Typo.h5">@club.Name</MudText>
+                        <MudText Typo="Typo.body2">Courts: @club.DefaultCourtCount</MudText>
+                        <MudText Typo="Typo.body2">Type: @club.GameType</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+    
+    <MudFab Color="Color.Primary" 
+            StartIcon="@Icons.Material.Filled.Add"
+            OnClick="CreateTestClub"
+            Style="position: fixed; bottom: 16px; right: 16px;">
+        Add Club
+    </MudFab>
+}
+
+@code {
+    private List<Club>? _clubs;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _clubs = await ClubService.GetAllClubsAsync();
+    }
+
+    private async Task CreateTestClub()
+    {
+        await ClubService.CreateClubAsync($"Test Club {_clubs.Count + 1}", 4, GameType.Doubles);
+        _clubs = await ClubService.GetAllClubsAsync();
+    }
+}

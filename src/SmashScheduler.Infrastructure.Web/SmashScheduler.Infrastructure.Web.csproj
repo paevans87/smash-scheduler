@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SmashScheduler.Domain\SmashScheduler.Domain.csproj" />
+    <ProjectReference Include="..\SmashScheduler.Application\SmashScheduler.Application.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

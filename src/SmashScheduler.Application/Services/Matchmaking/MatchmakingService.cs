@@ -2,7 +2,7 @@ using SmashScheduler.Application.Services.Matchmaking.Models;
 using SmashScheduler.Application.Services.Matchmaking.ScoringStrategies;
 using SmashScheduler.Domain.Entities;
 using SmashScheduler.Domain.Enums;
-using SmashScheduler.Infrastructure.Data.Repositories;
+using SmashScheduler.Application.Interfaces.Repositories;
 
 namespace SmashScheduler.Application.Services.Matchmaking;
 
