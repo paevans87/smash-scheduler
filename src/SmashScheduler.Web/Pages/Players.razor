@@ -1,0 +1,55 @@
+@page "/clubs/{ClubId:guid}/players"
+@using SmashScheduler.Application.Services.PlayerManagement
+@using SmashScheduler.Domain.Entities
+@using SmashScheduler.Domain.Enums
+@inject IPlayerService PlayerService
+
+<PageTitle>Players</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">Players</MudText>
+
+@if (_players == null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudGrid>
+        @foreach (var player in _players)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard>
+                    <MudCardContent>
+                        <MudText Typo="Typo.h5">@player.Name</MudText>
+                        <MudChip Color="Color.Primary" Size="Size.Small">Skill: @player.SkillLevel</MudChip>
+                        <MudText Typo="Typo.body2">@player.Gender</MudText>
+                        <MudText Typo="Typo.body2">@player.PlayStylePreference</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+    
+    <MudFab Color="Color.Primary" 
+            StartIcon="@Icons.Material.Filled.Add"
+            OnClick="CreateTestPlayer"
+            Style="position: fixed; bottom: 16px; right: 16px;">
+        Add Player
+    </MudFab>
+}
+
+@code {
+    [Parameter] public Guid ClubId { get; set; }
+    private List<Player>? _players;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _players = await PlayerService.GetPlayersByClubIdAsync(ClubId);
+    }
+
+    private async Task CreateTestPlayer()
+    {
+        await PlayerService.CreatePlayerAsync(ClubId, $"Player {_players.Count + 1}", 5, Gender.Male, PlayStylePreference.Mixed);
+        _players = await PlayerService.GetPlayersByClubIdAsync(ClubId);
+    }
+}

@@ -18,7 +18,7 @@ else
         @foreach (var club in _clubs)
         {
             <MudItem xs="12" sm="6" md="4">
-                <MudCard>
+                <MudCard Style="cursor:pointer" @onclick="() => NavigateToClub(club.Id)">
                     <MudCardContent>
                         <MudText Typo="Typo.h5">@club.Name</MudText>
                         <MudText Typo="Typo.body2">Courts: @club.DefaultCourtCount</MudText>
@@ -45,9 +45,15 @@ else
         _clubs = await ClubService.GetAllClubsAsync();
     }
 
+    private void NavigateToClub(Guid clubId)
+    {
+        Navigation.NavigateTo($"/clubs/{clubId}");
+    }
+
     private async Task CreateTestClub()
     {
         await ClubService.CreateClubAsync($"Test Club {_clubs.Count + 1}", 4, GameType.Doubles);
         _clubs = await ClubService.GetAllClubsAsync();
     }
 }
+@inject NavigationManager Navigation

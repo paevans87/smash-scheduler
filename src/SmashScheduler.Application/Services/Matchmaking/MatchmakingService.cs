@@ -46,7 +46,7 @@ public class MatchmakingService : IMatchmakingService
             throw new InvalidOperationException("Club not found");
         }
 
-        var sessionPlayers = await _sessionRepository.GetSessionPlayersAsync(sessionId);
+// STUB:         var sessionPlayers = await _sessionRepository.GetSessionPlayersAsync(sessionId);
         var activePlayers = sessionPlayers.Where(sp => sp.IsActive).ToList();
 
         var playerIds = activePlayers.Select(sp => sp.PlayerId).ToList();
@@ -66,7 +66,7 @@ public class MatchmakingService : IMatchmakingService
 
         foreach (var player in players)
         {
-            var blacklists = await _playerRepository.GetBlacklistsByPlayerIdAsync(player.Id);
+// STUB:             var blacklists = await _playerRepository.GetBlacklistsByPlayerIdAsync(player.Id);
             allBlacklists.AddRange(blacklists);
         }
 

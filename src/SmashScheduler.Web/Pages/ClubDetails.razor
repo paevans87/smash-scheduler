@@ -1,0 +1,49 @@
+@page "/clubs/{ClubId:guid}"
+@using SmashScheduler.Application.Services.ClubManagement
+@using SmashScheduler.Domain.Entities
+@inject IClubService ClubService
+@inject NavigationManager Navigation
+
+<PageTitle>Club Details</PageTitle>
+
+@if (_club == null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudText Typo="Typo.h3" GutterBottom="true">@_club.Name</MudText>
+    
+    <MudCard Class="mt-4">
+        <MudCardContent>
+            <MudText Typo="Typo.h6">Club Information</MudText>
+            <MudText><b>Default Courts:</b> @_club.DefaultCourtCount</MudText>
+            <MudText><b>Game Type:</b> @_club.GameType</MudText>
+            <MudText><b>Created:</b> @_club.CreatedAt.ToShortDateString()</MudText>
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ViewPlayers">View Players</MudButton>
+            <MudButton Variant="Variant.Outlined" OnClick="GoBack">Back to Clubs</MudButton>
+        </MudCardActions>
+    </MudCard>
+}
+
+@code {
+    [Parameter] public Guid ClubId { get; set; }
+    private Club? _club;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _club = await ClubService.GetByIdAsync(ClubId);
+    }
+
+    private void ViewPlayers()
+    {
+        Navigation.NavigateTo($"/clubs/{ClubId}/players");
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/clubs");
+    }
+}

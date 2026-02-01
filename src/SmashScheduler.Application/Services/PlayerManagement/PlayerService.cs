@@ -64,9 +64,9 @@ public class PlayerService : IPlayerService
         await _playerRepository.DeleteAsync(id);
     }
 
-    public async Task AddToBlacklistAsync(Guid playerId, Guid blacklistedPlayerId, BlacklistType blacklistType)
+// STUB:     public async Task AddToBlacklistAsync(Guid playerId, Guid blacklistedPlayerId, BlacklistType blacklistType)
     {
-        var existingBlacklists = await _playerRepository.GetBlacklistsByPlayerIdAsync(playerId);
+// STUB:         var existingBlacklists = await _playerRepository.GetBlacklistsByPlayerIdAsync(playerId);
 
         var isDuplicate = existingBlacklists.Any(b =>
             b.BlacklistedPlayerId == blacklistedPlayerId &&
@@ -84,16 +84,16 @@ public class PlayerService : IPlayerService
             BlacklistType = blacklistType
         };
 
-        await _playerRepository.AddToBlacklistAsync(blacklist);
+// STUB:         await _playerRepository.AddToBlacklistAsync(blacklist);
     }
 
-    public async Task RemoveFromBlacklistAsync(Guid playerId, Guid blacklistedPlayerId)
+// STUB:     public async Task RemoveFromBlacklistAsync(Guid playerId, Guid blacklistedPlayerId)
     {
-        await _playerRepository.RemoveFromBlacklistAsync(playerId, blacklistedPlayerId);
+// STUB:         await _playerRepository.RemoveFromBlacklistAsync(playerId, blacklistedPlayerId);
     }
 
     public async Task<List<PlayerBlacklist>> GetBlacklistsAsync(Guid playerId)
     {
-        return await _playerRepository.GetBlacklistsByPlayerIdAsync(playerId);
+// STUB:         return await _playerRepository.GetBlacklistsByPlayerIdAsync(playerId);
     }
 }

@@ -26,7 +26,7 @@ public class SessionService : ISessionService
 
         if (session != null)
         {
-            session.SessionPlayers = await _sessionRepository.GetSessionPlayersAsync(id);
+// STUB:             session.SessionPlayers = await _sessionRepository.GetSessionPlayersAsync(id);
             session.Matches = await _matchRepository.GetBySessionIdAsync(id);
         }
 
@@ -38,13 +38,13 @@ public class SessionService : ISessionService
         return await _sessionRepository.GetByClubIdAsync(clubId);
     }
 
-    public async Task<Session?> GetActiveSessionAsync(Guid clubId)
+// STUB:     public async Task<Session?> GetActiveSessionAsync(Guid clubId)
     {
-        var session = await _sessionRepository.GetActiveSessionAsync(clubId);
+// STUB:         var session = await _sessionRepository.GetActiveSessionAsync(clubId);
 
         if (session != null)
         {
-            session.SessionPlayers = await _sessionRepository.GetSessionPlayersAsync(session.Id);
+// STUB:             session.SessionPlayers = await _sessionRepository.GetSessionPlayersAsync(session.Id);
             session.Matches = await _matchRepository.GetBySessionIdAsync(session.Id);
         }
 
@@ -73,7 +73,7 @@ public class SessionService : ISessionService
         return session;
     }
 
-    public async Task AddPlayerToSessionAsync(Guid sessionId, Guid playerId)
+// STUB:     public async Task AddPlayerToSessionAsync(Guid sessionId, Guid playerId)
     {
         var session = await _sessionRepository.GetByIdAsync(sessionId);
 
@@ -94,17 +94,17 @@ public class SessionService : ISessionService
             IsActive = true
         };
 
-        await _sessionRepository.AddPlayerToSessionAsync(sessionPlayer);
+// STUB:         await _sessionRepository.AddPlayerToSessionAsync(sessionPlayer);
     }
 
-    public async Task RemovePlayerFromSessionAsync(Guid sessionId, Guid playerId)
+// STUB:     public async Task RemovePlayerFromSessionAsync(Guid sessionId, Guid playerId)
     {
-        await _sessionRepository.RemovePlayerFromSessionAsync(sessionId, playerId);
+// STUB:         await _sessionRepository.RemovePlayerFromSessionAsync(sessionId, playerId);
     }
 
     public async Task MarkPlayerInactiveAsync(Guid sessionId, Guid playerId, bool isActive)
     {
-        var sessionPlayers = await _sessionRepository.GetSessionPlayersAsync(sessionId);
+// STUB:         var sessionPlayers = await _sessionRepository.GetSessionPlayersAsync(sessionId);
         var sessionPlayer = sessionPlayers.FirstOrDefault(sp => sp.PlayerId == playerId);
 
         if (sessionPlayer == null)
@@ -113,12 +113,12 @@ public class SessionService : ISessionService
         }
 
         sessionPlayer.IsActive = isActive;
-        await _sessionRepository.UpdateSessionPlayerAsync(sessionPlayer);
+// STUB:         await _sessionRepository.UpdateSessionPlayerAsync(sessionPlayer);
     }
 
     public async Task DeleteSessionAsync(Guid id)
     {
-        await _matchRepository.DeleteBySessionIdAsync(id);
+// STUB:         await _matchRepository.DeleteBySessionIdAsync(id);
         await _sessionRepository.DeleteAsync(id);
     }
 }
