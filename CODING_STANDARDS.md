@@ -83,3 +83,23 @@ The **Critic** must reject code that:
 - **Rule**: Each class, record, or interface must live in its own file. Multiple class definitions in a single .cs file are prohibited.
 - **Exceptions**: Nested classes that are private implementation details of the parent class are permitted.
 - **File Naming**: The filename must match the type name exactly (e.g., `ClubService.cs` contains `public class ClubService`).
+
+## 13. Line Length
+- **Rule**: Single lines of code may extend up to 180 characters before requiring a line break.
+- **Rationale**: Modern displays support wider code viewing, and 180 characters provides a balance between readability and reducing vertical scrolling.
+- **Exceptions**: If a line exceeds 180 characters, break it at logical points (method parameters, chained methods, operators).
+
+## 14. LINQ Formatting
+- **Rule**: LINQ queries with chained methods must line-break at each method chain.
+- **Good**:
+  ```csharp
+  var activePlayers = players
+      .Where(p => p.IsActive)
+      .Select(p => p.Name)
+      .ToList();
+  ```
+- **Bad**:
+  ```csharp
+  var activePlayers = players.Where(p => p.IsActive).Select(p => p.Name).ToList();
+  ```
+- **Rationale**: Line-breaking chained methods improves readability and makes debugging easier by isolating each transformation step.
