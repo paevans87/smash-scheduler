@@ -52,3 +52,34 @@ The **Critic** must reject code that:
 ## 10. Security First
 - **Rule**: NO code should introduce potential attack vectors.
 - **Exceptions**: NONE
+
+## 11. Primary Constructors (C# 12+)
+- **Rule**: Prefer primary constructors for classes with simple constructor parameter to field/property assignment patterns.
+- **Good**:
+  ```csharp
+  public class ClubService(IClubRepository clubRepository) : IClubService
+  {
+      public async Task<Club?> GetByIdAsync(Guid id)
+      {
+          return await clubRepository.GetByIdAsync(id);
+      }
+  }
+  ```
+- **Bad**:
+  ```csharp
+  public class ClubService : IClubService
+  {
+      private readonly IClubRepository _clubRepository;
+
+      public ClubService(IClubRepository clubRepository)
+      {
+          _clubRepository = clubRepository;
+      }
+  }
+  ```
+- **Note**: Traditional constructors are acceptable when constructor logic is complex (validation, initialisation beyond simple assignment).
+
+## 12. One Class Per File
+- **Rule**: Each class, record, or interface must live in its own file. Multiple class definitions in a single .cs file are prohibited.
+- **Exceptions**: Nested classes that are private implementation details of the parent class are permitted.
+- **File Naming**: The filename must match the type name exactly (e.g., `ClubService.cs` contains `public class ClubService`).
