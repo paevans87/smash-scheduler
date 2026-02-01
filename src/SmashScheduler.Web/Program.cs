@@ -8,6 +8,7 @@ using SmashScheduler.Application.Services.SessionManagement;
 using SmashScheduler.Application.Services.MatchManagement;
 using SmashScheduler.Application.Services.Matchmaking;
 using SmashScheduler.Application.Services.Analytics;
+using Fluxor;
 using SmashScheduler.Infrastructure.Web;
 using SmashScheduler.Web;
 
@@ -18,6 +19,9 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
 builder.Services.AddMudServices();
+
+builder.Services.AddFluxor(options => options
+    .ScanAssemblies(typeof(Program).Assembly));
 
 builder.Services.AddSingleton<SmashSchedulerDb>();
 builder.Services.AddSingleton<IClubRepository, IndexedDbClubRepository>();
