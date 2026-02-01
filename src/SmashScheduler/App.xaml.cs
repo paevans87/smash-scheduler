@@ -2,7 +2,7 @@ using SmashScheduler.Infrastructure.Persistence;
 
 namespace SmashScheduler;
 
-public partial class App : Application
+public partial class App : Microsoft.Maui.Controls.Application
 {
     public App(DatabaseInitialiser databaseInitialiser)
     {
