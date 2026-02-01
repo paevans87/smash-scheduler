@@ -25,7 +25,7 @@ public partial class SessionActiveViewModel : ObservableObject
     private Domain.Entities.Session? _session;
 
     [ObservableProperty]
-    private ObservableCollection<Match> _activeMatches = new();
+    private ObservableCollection<Domain.Entities.Match> _activeMatches = new();
 
     [ObservableProperty]
     private ObservableCollection<Domain.Entities.Player> _benchedPlayers = new();
@@ -72,7 +72,7 @@ public partial class SessionActiveViewModel : ObservableObject
             if (Session != null)
             {
                 var matches = await _matchService.GetBySessionIdAsync(_sessionId);
-                ActiveMatches = new ObservableCollection<Match>(
+                ActiveMatches = new ObservableCollection<Domain.Entities.Match>(
                     matches.Where(m => m.State == MatchState.InProgress)
                 );
 

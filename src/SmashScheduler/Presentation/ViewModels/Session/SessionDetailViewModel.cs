@@ -21,7 +21,7 @@ public partial class SessionDetailViewModel : ObservableObject
     private Domain.Entities.Session? _session;
 
     [ObservableProperty]
-    private ObservableCollection<Match> _matches = new();
+    private ObservableCollection<Domain.Entities.Match> _matches = new();
 
     [ObservableProperty]
     private bool _isLoading;
@@ -54,7 +54,7 @@ public partial class SessionDetailViewModel : ObservableObject
             if (Session != null)
             {
                 var matches = await _matchService.GetBySessionIdAsync(sessionId);
-                Matches = new ObservableCollection<Match>(matches);
+                Matches = new ObservableCollection<Domain.Entities.Match>(matches);
                 TotalMatches = matches.Count;
                 CompletedMatches = matches.Count(m => m.State == MatchState.Completed);
             }

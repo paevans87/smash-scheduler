@@ -20,10 +20,10 @@ public partial class ClubDetailViewModel : ObservableObject
     private Domain.Entities.Club? _club;
 
     [ObservableProperty]
-    private ObservableCollection<Player> _players = new();
+    private ObservableCollection<Domain.Entities.Player> _players = new();
 
     [ObservableProperty]
-    private ObservableCollection<Session> _recentSessions = new();
+    private ObservableCollection<Domain.Entities.Session> _recentSessions = new();
 
     [ObservableProperty]
     private bool _isLoading;
@@ -57,11 +57,11 @@ public partial class ClubDetailViewModel : ObservableObject
             if (Club != null)
             {
                 var players = await _playerService.GetByClubIdAsync(clubId);
-                Players = new ObservableCollection<Player>(players);
+                Players = new ObservableCollection<Domain.Entities.Player>(players);
                 PlayerCount = players.Count;
 
                 var sessions = await _sessionService.GetByClubIdAsync(clubId);
-                RecentSessions = new ObservableCollection<Session>(sessions.Take(5));
+                RecentSessions = new ObservableCollection<Domain.Entities.Session>(sessions.Take(5));
                 SessionCount = sessions.Count;
             }
         }
