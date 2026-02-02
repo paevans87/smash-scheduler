@@ -1,0 +1,181 @@
+@using MudBlazor
+@using SmashScheduler.Application.Services.PlayerManagement
+@using SmashScheduler.Domain.Entities
+@using SmashScheduler.Domain.Enums
+@inject IPlayerService PlayerService
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Block" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Manage Blacklist - @Player.Name</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3">
+            <MudTabPanel Text="Partner Blacklist" BadgeData="@GetBlacklistCount(BlacklistType.Partner)" BadgeColor="Color.Error">
+                @RenderBlacklistTab(BlacklistType.Partner)
+            </MudTabPanel>
+            <MudTabPanel Text="Opponent Blacklist" BadgeData="@GetBlacklistCount(BlacklistType.Opponent)" BadgeColor="Color.Warning">
+                @RenderBlacklistTab(BlacklistType.Opponent)
+            </MudTabPanel>
+        </MudTabs>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Variant="Variant.Filled" Color="Color.Primary">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter, EditorRequired] public Player Player { get; set; } = null!;
+    [Parameter, EditorRequired] public List<Player> ClubPlayers { get; set; } = new();
+
+    private List<PlayerBlacklist> _blacklists = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBlacklists();
+    }
+
+    private async Task LoadBlacklists()
+    {
+        _isLoading = true;
+        _blacklists = await PlayerService.GetBlacklistsAsync(Player.Id);
+        _isLoading = false;
+    }
+
+    private RenderFragment RenderBlacklistTab(BlacklistType blacklistType) => __builder =>
+    {
+        if (_isLoading)
+        {
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+            return;
+        }
+
+        <MudStack Spacing="4">
+            <div>
+                <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Currently Blocked</MudText>
+                @{
+                    var blocked = GetBlockedPlayers(blacklistType);
+                }
+                @if (!blocked.Any())
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No players blocked</MudText>
+                }
+                else
+                {
+                    <MudStack Spacing="2">
+                        @foreach (var player in blocked)
+                        {
+                            <MudPaper Class="player-card" Elevation="1">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                                        <MudAvatar Size="Size.Medium" Color="Color.Error" Variant="Variant.Filled">
+                                            @player.Name[0]
+                                        </MudAvatar>
+                                        <MudText Typo="Typo.body1" Style="font-weight: 500;">@player.Name</MudText>
+                                    </MudStack>
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                        <SkillLevelBadge SkillLevel="@player.SkillLevel" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.RemoveCircle"
+                                                       Size="Size.Medium"
+                                                       Color="Color.Error"
+                                                       Variant="Variant.Filled"
+                                                       OnClick="@(() => RemoveFromBlacklist(player, blacklistType))" />
+                                    </MudStack>
+                                </MudStack>
+                            </MudPaper>
+                        }
+                    </MudStack>
+                }
+            </div>
+
+            <MudDivider />
+
+            <div>
+                <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Available Players</MudText>
+                @{
+                    var available = GetAvailablePlayers(blacklistType);
+                }
+                @if (!available.Any())
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No players available</MudText>
+                }
+                else
+                {
+                    <MudStack Spacing="2">
+                        @foreach (var player in available)
+                        {
+                            <MudPaper Class="player-card player-selectable" Elevation="1">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                                        <MudAvatar Size="Size.Medium" Color="Color.Primary" Variant="Variant.Filled">
+                                            @player.Name[0]
+                                        </MudAvatar>
+                                        <MudText Typo="Typo.body1" Style="font-weight: 500;">@player.Name</MudText>
+                                    </MudStack>
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                        <SkillLevelBadge SkillLevel="@player.SkillLevel" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Block"
+                                                       Size="Size.Medium"
+                                                       Color="Color.Warning"
+                                                       Variant="Variant.Filled"
+                                                       OnClick="@(() => AddToBlacklist(player, blacklistType))" />
+                                    </MudStack>
+                                </MudStack>
+                            </MudPaper>
+                        }
+                    </MudStack>
+                }
+            </div>
+        </MudStack>
+    };
+
+    private string? GetBlacklistCount(BlacklistType blacklistType)
+    {
+        var count = _blacklists.Count(b => b.BlacklistType == blacklistType);
+        return count > 0 ? count.ToString() : null;
+    }
+
+    private List<Player> GetBlockedPlayers(BlacklistType blacklistType)
+    {
+        var blockedIds = _blacklists
+            .Where(b => b.BlacklistType == blacklistType)
+            .Select(b => b.BlacklistedPlayerId)
+            .ToHashSet();
+
+        return ClubPlayers
+            .Where(p => blockedIds.Contains(p.Id))
+            .OrderBy(p => p.Name)
+            .ToList();
+    }
+
+    private List<Player> GetAvailablePlayers(BlacklistType blacklistType)
+    {
+        var blockedIds = _blacklists
+            .Where(b => b.BlacklistType == blacklistType)
+            .Select(b => b.BlacklistedPlayerId)
+            .ToHashSet();
+
+        return ClubPlayers
+            .Where(p => p.Id != Player.Id && !blockedIds.Contains(p.Id))
+            .OrderBy(p => p.Name)
+            .ToList();
+    }
+
+    private async Task AddToBlacklist(Player player, BlacklistType blacklistType)
+    {
+        await PlayerService.AddToBlacklistAsync(Player.Id, player.Id, blacklistType);
+        await LoadBlacklists();
+    }
+
+    private async Task RemoveFromBlacklist(Player player, BlacklistType blacklistType)
+    {
+        await PlayerService.RemoveFromBlacklistAsync(Player.Id, player.Id, blacklistType);
+        await LoadBlacklists();
+    }
+
+    private void Close() => MudDialog.Close(DialogResult.Ok(true));
+}

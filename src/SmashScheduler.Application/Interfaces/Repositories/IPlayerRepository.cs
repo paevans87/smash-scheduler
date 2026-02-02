@@ -10,4 +10,7 @@ public interface IPlayerRepository
     Task InsertAsync(Player player);
     Task UpdateAsync(Player player);
     Task DeleteAsync(Guid id);
+    Task<List<PlayerBlacklist>> GetBlacklistsByPlayerIdAsync(Guid playerId);
+    Task AddToBlacklistAsync(PlayerBlacklist blacklist);
+    Task RemoveFromBlacklistAsync(Guid playerId, Guid blacklistedPlayerId);
 }

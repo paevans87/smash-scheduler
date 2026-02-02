@@ -50,6 +50,33 @@ public class PlayerService(
 
     public async Task<List<PlayerBlacklist>> GetBlacklistsAsync(Guid playerId)
     {
-        return new List<PlayerBlacklist>();
+        return await playerRepository.GetBlacklistsByPlayerIdAsync(playerId);
+    }
+
+    public async Task AddToBlacklistAsync(Guid playerId, Guid blacklistedPlayerId, BlacklistType blacklistType)
+    {
+        if (playerId == blacklistedPlayerId)
+            return;
+
+        var existingBlacklists = await playerRepository.GetBlacklistsByPlayerIdAsync(playerId);
+        var alreadyExists = existingBlacklists.Any(b =>
+            b.BlacklistedPlayerId == blacklistedPlayerId && b.BlacklistType == blacklistType);
+
+        if (alreadyExists)
+            return;
+
+        var blacklist = new PlayerBlacklist
+        {
+            PlayerId = playerId,
+            BlacklistedPlayerId = blacklistedPlayerId,
+            BlacklistType = blacklistType
+        };
+
+        await playerRepository.AddToBlacklistAsync(blacklist);
+    }
+
+    public async Task RemoveFromBlacklistAsync(Guid playerId, Guid blacklistedPlayerId, BlacklistType blacklistType)
+    {
+        await playerRepository.RemoveFromBlacklistAsync(playerId, blacklistedPlayerId);
     }
 }

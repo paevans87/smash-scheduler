@@ -2,7 +2,9 @@
 @using SmashScheduler.Application.Services.PlayerManagement
 @using SmashScheduler.Domain.Entities
 @using SmashScheduler.Domain.Enums
+@using SmashScheduler.Web.Components
 @inject IPlayerService PlayerService
+@inject IDialogService DialogService
 
 <PageTitle>Players</PageTitle>
 
@@ -20,16 +22,26 @@ else
             <MudItem xs="12" sm="6" md="4">
                 <MudCard>
                     <MudCardContent>
-                        <MudText Typo="Typo.h5">@player.Name</MudText>
-                        <MudChip T="string" Color="Color.Primary" Size="Size.Small">Skill: @player.SkillLevel</MudChip>
-                        <MudText Typo="Typo.body2">@player.Gender</MudText>
-                        <MudText Typo="Typo.body2">@player.PlayStylePreference</MudText>
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                            <div>
+                                <MudText Typo="Typo.h5">@player.Name</MudText>
+                                <MudChip T="string" Color="Color.Primary" Size="Size.Small">Skill: @player.SkillLevel</MudChip>
+                                <MudText Typo="Typo.body2">@player.Gender</MudText>
+                                <MudText Typo="Typo.body2">@player.PlayStylePreference</MudText>
+                            </div>
+                            <MudTooltip Text="Manage Blacklist">
+                                <MudIconButton Icon="@Icons.Material.Filled.Block"
+                                               Color="Color.Default"
+                                               Size="Size.Medium"
+                                               OnClick="@(() => OpenBlacklistDialog(player))" />
+                            </MudTooltip>
+                        </MudStack>
                     </MudCardContent>
                 </MudCard>
             </MudItem>
         }
     </MudGrid>
-    
+
     <MudFab Color="Color.Primary"
             StartIcon="@Icons.Material.Filled.Add"
             Label="Add Player"
@@ -51,5 +63,23 @@ else
         var count = _players?.Count ?? 0;
         await PlayerService.CreatePlayerAsync(ClubId, $"Player {count + 1}", 5, Gender.Male, PlayStylePreference.Mixed);
         _players = await PlayerService.GetByClubIdAsync(ClubId);
+    }
+
+    private async Task OpenBlacklistDialog(Player player)
+    {
+        var parameters = new DialogParameters<BlacklistEditorDialog>
+        {
+            { x => x.Player, player },
+            { x => x.ClubPlayers, _players! }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseOnEscapeKey = true
+        };
+
+        await DialogService.ShowAsync<BlacklistEditorDialog>("Manage Blacklist", parameters, options);
     }
 }
