@@ -13,23 +13,31 @@
     </TitleContent>
     <DialogContent>
         <MudStack Spacing="3">
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_errorMessage</MudAlert>
+            }
+
             <MudTextField @bind-Value="_name"
                           Label="Club Name"
                           Variant="Variant.Outlined"
                           Required="true"
-                          RequiredError="Club name is required" />
+                          RequiredError="Club name is required"
+                          Disabled="_isSubmitting" />
 
             <MudNumericField T="int"
                              @bind-Value="_courtCount"
                              Label="Default Court Count"
                              Variant="Variant.Outlined"
                              Min="1"
-                             Max="20" />
+                             Max="20"
+                             Disabled="_isSubmitting" />
 
             <MudSelect T="GameType"
                        @bind-Value="_gameType"
                        Label="Game Type"
-                       Variant="Variant.Outlined">
+                       Variant="Variant.Outlined"
+                       Disabled="_isSubmitting">
                 @foreach (GameType type in Enum.GetValues<GameType>())
                 {
                     <MudSelectItem Value="@type">@type</MudSelectItem>
@@ -38,11 +46,15 @@
         </MudStack>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton OnClick="Cancel" Variant="Variant.Text" Disabled="_isSubmitting">Cancel</MudButton>
         <MudButton OnClick="Submit"
                    Color="Color.Primary"
                    Variant="Variant.Filled"
                    Disabled="@(!IsValid)">
+            @if (_isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
             @(IsEditMode ? "Save Changes" : "Create Club")
         </MudButton>
     </DialogActions>
@@ -55,9 +67,11 @@
     private string _name = string.Empty;
     private int _courtCount = 4;
     private GameType _gameType = GameType.Doubles;
+    private string? _errorMessage;
+    private bool _isSubmitting;
 
     private bool IsEditMode => Club != null;
-    private bool IsValid => !string.IsNullOrWhiteSpace(_name);
+    private bool IsValid => !string.IsNullOrWhiteSpace(_name) && !_isSubmitting;
 
     protected override void OnInitialized()
     {
@@ -75,18 +89,29 @@
     {
         if (!IsValid) return;
 
-        if (IsEditMode)
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
         {
-            Club!.Name = _name;
-            Club.DefaultCourtCount = _courtCount;
-            Club.GameType = _gameType;
-            await ClubService.UpdateClubAsync(Club);
-            MudDialog.Close(DialogResult.Ok(Club));
+            if (IsEditMode)
+            {
+                Club!.Name = _name;
+                Club.DefaultCourtCount = _courtCount;
+                Club.GameType = _gameType;
+                await ClubService.UpdateClubAsync(Club);
+                MudDialog.Close(DialogResult.Ok(Club));
+            }
+            else
+            {
+                var club = await ClubService.CreateClubAsync(_name, _courtCount, _gameType);
+                MudDialog.Close(DialogResult.Ok(club));
+            }
         }
-        else
+        catch (Exception ex)
         {
-            var club = await ClubService.CreateClubAsync(_name, _courtCount, _gameType);
-            MudDialog.Close(DialogResult.Ok(club));
+            _errorMessage = ex.Message;
+            _isSubmitting = false;
         }
     }
 }

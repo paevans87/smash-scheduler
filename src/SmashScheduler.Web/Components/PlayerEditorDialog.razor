@@ -13,22 +13,29 @@
     </TitleContent>
     <DialogContent>
         <MudStack Spacing="3">
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_errorMessage</MudAlert>
+            }
+
             <MudTextField @bind-Value="_name"
                           Label="Player Name"
                           Variant="Variant.Outlined"
                           Required="true"
-                          RequiredError="Player name is required" />
+                          RequiredError="Player name is required"
+                          Disabled="_isSubmitting" />
 
             <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
                 <MudText Typo="Typo.body2" Style="min-width: 80px;">Skill Level</MudText>
-                <MudRating @bind-SelectedValue="_skillLevel" MaxValue="10" />
+                <MudRating @bind-SelectedValue="_skillLevel" MaxValue="10" ReadOnly="_isSubmitting" />
                 <MudChip T="string" Size="Size.Small" Color="@GetSkillColour()">@_skillLevel</MudChip>
             </MudStack>
 
             <MudSelect T="Gender"
                        @bind-Value="_gender"
                        Label="Gender"
-                       Variant="Variant.Outlined">
+                       Variant="Variant.Outlined"
+                       Disabled="_isSubmitting">
                 @foreach (Gender gender in Enum.GetValues<Gender>())
                 {
                     <MudSelectItem Value="@gender">@gender</MudSelectItem>
@@ -38,7 +45,8 @@
             <MudSelect T="PlayStylePreference"
                        @bind-Value="_playStylePreference"
                        Label="Play Style Preference"
-                       Variant="Variant.Outlined">
+                       Variant="Variant.Outlined"
+                       Disabled="_isSubmitting">
                 @foreach (PlayStylePreference style in Enum.GetValues<PlayStylePreference>())
                 {
                     <MudSelectItem Value="@style">@GetPlayStyleLabel(style)</MudSelectItem>
@@ -47,11 +55,15 @@
         </MudStack>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton OnClick="Cancel" Variant="Variant.Text" Disabled="_isSubmitting">Cancel</MudButton>
         <MudButton OnClick="Submit"
                    Color="Color.Primary"
                    Variant="Variant.Filled"
                    Disabled="@(!IsValid)">
+            @if (_isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
             @(IsEditMode ? "Save Changes" : "Add Player")
         </MudButton>
     </DialogActions>
@@ -66,9 +78,11 @@
     private int _skillLevel = 5;
     private Gender _gender = Gender.Male;
     private PlayStylePreference _playStylePreference = PlayStylePreference.Mixed;
+    private string? _errorMessage;
+    private bool _isSubmitting;
 
     private bool IsEditMode => Player != null;
-    private bool IsValid => !string.IsNullOrWhiteSpace(_name);
+    private bool IsValid => !string.IsNullOrWhiteSpace(_name) && !_isSubmitting;
 
     protected override void OnInitialized()
     {
@@ -102,19 +116,30 @@
     {
         if (!IsValid) return;
 
-        if (IsEditMode)
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
         {
-            Player!.Name = _name;
-            Player.SkillLevel = _skillLevel;
-            Player.Gender = _gender;
-            Player.PlayStylePreference = _playStylePreference;
-            await PlayerService.UpdatePlayerAsync(Player);
-            MudDialog.Close(DialogResult.Ok(Player));
+            if (IsEditMode)
+            {
+                Player!.Name = _name;
+                Player.SkillLevel = _skillLevel;
+                Player.Gender = _gender;
+                Player.PlayStylePreference = _playStylePreference;
+                await PlayerService.UpdatePlayerAsync(Player);
+                MudDialog.Close(DialogResult.Ok(Player));
+            }
+            else
+            {
+                var player = await PlayerService.CreatePlayerAsync(ClubId, _name, _skillLevel, _gender, _playStylePreference);
+                MudDialog.Close(DialogResult.Ok(player));
+            }
         }
-        else
+        catch (Exception ex)
         {
-            var player = await PlayerService.CreatePlayerAsync(ClubId, _name, _skillLevel, _gender, _playStylePreference);
-            MudDialog.Close(DialogResult.Ok(player));
+            _errorMessage = ex.Message;
+            _isSubmitting = false;
         }
     }
 }
