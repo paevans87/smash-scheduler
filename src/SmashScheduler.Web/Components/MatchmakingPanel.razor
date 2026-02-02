@@ -1,13 +1,15 @@
 @using MudBlazor
 @using SmashScheduler.Domain.Entities
 @using SmashScheduler.Web.Components
+@inject IDialogService DialogService
 
 <MudStack Spacing="4">
     <CourtDisplay Matches="@ActiveMatches"
                   CourtCount="@Session.CourtCount"
                   PlayerLookup="@PlayerLookup"
                   IsReadOnly="false"
-                  OnMatchComplete="@OnMatchComplete" />
+                  OnMatchComplete="@OnMatchComplete"
+                  OnMatchEdit="@HandleEditMatch" />
 
     <BenchDisplay BenchedPlayers="@GetBenchedPlayers()" />
 </MudStack>
@@ -29,6 +31,7 @@
     [Parameter] public Dictionary<Guid, Player> PlayerLookup { get; set; } = new();
     [Parameter] public EventCallback OnGenerateMatches { get; set; }
     [Parameter] public EventCallback<Guid> OnMatchComplete { get; set; }
+    [Parameter] public EventCallback<(Guid MatchId, List<Guid> PlayerIds)> OnMatchPlayersUpdate { get; set; }
     [Parameter] public bool CanGenerateMatches { get; set; }
 
     private bool IsGenerating { get; set; }
@@ -61,5 +64,41 @@
 
         IsGenerating = false;
         StateHasChanged();
+    }
+
+    private async Task HandleEditMatch(Guid matchId)
+    {
+        var match = ActiveMatches.FirstOrDefault(m => m.Id == matchId);
+        if (match == null) return;
+
+        var playersInOtherMatches = ActiveMatches
+            .Where(m => m.Id != matchId && m.State == Domain.Enums.MatchState.InProgress)
+            .SelectMany(m => m.PlayerIds)
+            .ToHashSet();
+
+        var benchPlayerIds = GetBenchedPlayers().Select(p => p.Id).ToList();
+
+        var parameters = new DialogParameters<MatchEditorDialog>
+        {
+            { x => x.Match, match },
+            { x => x.PlayerLookup, PlayerLookup },
+            { x => x.BenchPlayerIds, benchPlayerIds },
+            { x => x.PlayersInOtherMatches, playersInOtherMatches }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<MatchEditorDialog>("Edit Match Players", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: List<Guid> newPlayerIds })
+        {
+            await OnMatchPlayersUpdate.InvokeAsync((matchId, newPlayerIds));
+        }
     }
 }

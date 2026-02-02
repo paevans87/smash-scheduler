@@ -1,0 +1,160 @@
+@using MudBlazor
+@using SmashScheduler.Domain.Entities
+@using SmashScheduler.Web.Components
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Edit Match Players - Court @Match.CourtNumber</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="4">
+            <div class="match-editor-section">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-2">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Current Players</MudText>
+                    <MudChip T="string" Color="@GetPlayerCountColour()" Size="Size.Small">
+                        @_selectedPlayerIds.Count / 4
+                    </MudChip>
+                </MudStack>
+                @if (!_selectedPlayerIds.Any())
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No players selected</MudText>
+                }
+                else
+                {
+                    <MudStack Spacing="2">
+                        @foreach (var playerId in _selectedPlayerIds.ToList())
+                        {
+                            if (PlayerLookup.TryGetValue(playerId, out var player))
+                            {
+                                <PlayerCard Player="@player"
+                                            ShowActions="true"
+                                            OnRemove="RemovePlayer" />
+                            }
+                        }
+                    </MudStack>
+                }
+            </div>
+
+            <MudDivider />
+
+            <div class="match-editor-section">
+                <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Available Players</MudText>
+                @if (!GetAvailablePlayers().Any())
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No players available</MudText>
+                }
+                else
+                {
+                    <MudStack Spacing="2">
+                        @foreach (var player in GetAvailablePlayers())
+                        {
+                            var isInOtherMatch = PlayersInOtherMatches.Contains(player.Id);
+                            <MudPaper Class="@GetPlayerCardClass(isInOtherMatch)" Elevation="1">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                                        <MudAvatar Size="Size.Medium" Color="@(isInOtherMatch ? Color.Default : Color.Primary)" Variant="Variant.Filled">
+                                            @player.Name[0]
+                                        </MudAvatar>
+                                        <MudStack Spacing="0">
+                                            <MudText Typo="Typo.body1" Style="font-weight: 500;">@player.Name</MudText>
+                                            @if (isInOtherMatch)
+                                            {
+                                                <MudText Typo="Typo.caption" Color="Color.Warning">In another match</MudText>
+                                            }
+                                        </MudStack>
+                                    </MudStack>
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                        <SkillLevelBadge SkillLevel="@player.SkillLevel" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                                       Size="Size.Medium"
+                                                       Color="Color.Success"
+                                                       Variant="Variant.Filled"
+                                                       Disabled="@(isInOtherMatch || _selectedPlayerIds.Count >= 4)"
+                                                       OnClick="@(() => AddPlayer(player))" />
+                                    </MudStack>
+                                </MudStack>
+                            </MudPaper>
+                        }
+                    </MudStack>
+                }
+            </div>
+
+            @if (_selectedPlayerIds.Count != 4)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    A match requires exactly 4 players. Currently selected: @_selectedPlayerIds.Count
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton OnClick="Submit"
+                   Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   Disabled="@(_selectedPlayerIds.Count != 4)">
+            Save Changes
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public Match Match { get; set; } = null!;
+    [Parameter] public Dictionary<Guid, Player> PlayerLookup { get; set; } = new();
+    [Parameter] public List<Guid> BenchPlayerIds { get; set; } = new();
+    [Parameter] public HashSet<Guid> PlayersInOtherMatches { get; set; } = new();
+
+    private List<Guid> _selectedPlayerIds = new();
+
+    protected override void OnInitialized()
+    {
+        _selectedPlayerIds = Match.PlayerIds.ToList();
+    }
+
+    private Color GetPlayerCountColour() => _selectedPlayerIds.Count switch
+    {
+        4 => Color.Success,
+        _ => Color.Warning
+    };
+
+    private string GetPlayerCardClass(bool isDisabled)
+    {
+        return isDisabled ? "player-card player-selectable player-selectable--disabled" : "player-card player-selectable";
+    }
+
+    private IEnumerable<Player> GetAvailablePlayers()
+    {
+        var allAvailableIds = BenchPlayerIds
+            .Concat(PlayersInOtherMatches)
+            .Concat(Match.PlayerIds)
+            .Where(id => !_selectedPlayerIds.Contains(id))
+            .Distinct();
+
+        return allAvailableIds
+            .Where(id => PlayerLookup.ContainsKey(id))
+            .Select(id => PlayerLookup[id])
+            .OrderBy(p => PlayersInOtherMatches.Contains(p.Id))
+            .ThenBy(p => p.Name);
+    }
+
+    private void AddPlayer(Player player)
+    {
+        if (_selectedPlayerIds.Count < 4 && !_selectedPlayerIds.Contains(player.Id))
+        {
+            _selectedPlayerIds.Add(player.Id);
+        }
+    }
+
+    private void RemovePlayer(Player player)
+    {
+        _selectedPlayerIds.Remove(player.Id);
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(_selectedPlayerIds));
+}

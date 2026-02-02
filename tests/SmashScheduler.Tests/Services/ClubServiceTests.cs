@@ -3,7 +3,7 @@ using Moq;
 using SmashScheduler.Application.Services.ClubManagement;
 using SmashScheduler.Domain.Entities;
 using SmashScheduler.Domain.Enums;
-using SmashScheduler.Infrastructure.Data.Repositories;
+using SmashScheduler.Application.Interfaces.Repositories;
 using Xunit;
 
 namespace SmashScheduler.Tests.Services;

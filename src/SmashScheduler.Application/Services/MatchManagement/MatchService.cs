@@ -51,6 +51,9 @@ public class MatchService(IMatchRepository matchRepository) : IMatchService
         var match = await matchRepository.GetByIdAsync(matchId);
         if (match == null) throw new InvalidOperationException("Match not found");
 
+        match.PlayerIds = playerIds;
+        match.WasAutomated = false;
+
         await matchRepository.UpdateAsync(match);
     }
 

@@ -41,7 +41,8 @@ else
                       PlayerLookup="@_playerLookup"
                       CanGenerateMatches="@CanGenerateMatches()"
                       OnGenerateMatches="GenerateMatches"
-                      OnMatchComplete="CompleteMatch" />
+                      OnMatchComplete="CompleteMatch"
+                      OnMatchPlayersUpdate="UpdateMatchPlayers" />
 }
 
 @code {
@@ -150,6 +151,12 @@ else
     private async Task CompleteMatch(Guid matchId)
     {
         await MatchService.CompleteMatchAsync(matchId, null, null);
+        await LoadData();
+    }
+
+    private async Task UpdateMatchPlayers((Guid MatchId, List<Guid> PlayerIds) update)
+    {
+        await MatchService.UpdateMatchPlayersAsync(update.MatchId, update.PlayerIds);
         await LoadData();
     }
 

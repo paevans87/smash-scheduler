@@ -13,7 +13,8 @@
                 <MatchCard Match="@match"
                            PlayerLookup="@PlayerLookup"
                            IsReadOnly="@IsReadOnly"
-                           OnComplete="@OnMatchComplete" />
+                           OnComplete="@OnMatchComplete"
+                           OnEdit="@OnMatchEdit" />
             }
             else
             {
@@ -40,6 +41,7 @@
     [Parameter] public Dictionary<Guid, Player> PlayerLookup { get; set; } = new();
     [Parameter] public bool IsReadOnly { get; set; }
     [Parameter] public EventCallback<Guid> OnMatchComplete { get; set; }
+    [Parameter] public EventCallback<Guid> OnMatchEdit { get; set; }
 
     private Match? GetMatchForCourt(int courtNumber)
     {

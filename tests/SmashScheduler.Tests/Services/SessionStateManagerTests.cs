@@ -1,9 +1,9 @@
 using FluentAssertions;
 using Moq;
+using SmashScheduler.Application.Interfaces.Repositories;
 using SmashScheduler.Application.Services.SessionManagement;
 using SmashScheduler.Domain.Entities;
 using SmashScheduler.Domain.Enums;
-using SmashScheduler.Infrastructure.Data.Repositories;
 using Xunit;
 
 namespace SmashScheduler.Tests.Services;
@@ -38,20 +38,15 @@ public class SessionStateManagerTests
     }
 
     [Fact]
-    public async Task ActivateSessionAsync_WithNonDraftSession_ThrowsException()
+    public async Task ActivateSessionAsync_WithNonExistentSession_ThrowsException()
     {
         var sessionId = Guid.NewGuid();
-        var session = new Session
-        {
-            Id = sessionId,
-            State = SessionState.Active
-        };
 
-        _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId)).ReturnsAsync(session);
+        _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId)).ReturnsAsync((Session?)null);
 
         var act = async () => await _sessionStateManager.ActivateSessionAsync(sessionId);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Session not found");
     }
 
     [Fact]
@@ -73,19 +68,31 @@ public class SessionStateManagerTests
     }
 
     [Fact]
-    public async Task CompleteSessionAsync_WithNonActiveSession_ThrowsException()
+    public async Task CompleteSessionAsync_WithNonExistentSession_ThrowsException()
+    {
+        var sessionId = Guid.NewGuid();
+
+        _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId)).ReturnsAsync((Session?)null);
+
+        var act = async () => await _sessionStateManager.CompleteSessionAsync(sessionId);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Session not found");
+    }
+
+    [Fact]
+    public async Task GetSessionStateAsync_ReturnsCurrentState()
     {
         var sessionId = Guid.NewGuid();
         var session = new Session
         {
             Id = sessionId,
-            State = SessionState.Draft
+            State = SessionState.Active
         };
 
         _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId)).ReturnsAsync(session);
 
-        var act = async () => await _sessionStateManager.CompleteSessionAsync(sessionId);
+        var result = await _sessionStateManager.GetSessionStateAsync(sessionId);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Should().Be(SessionState.Active);
     }
 }

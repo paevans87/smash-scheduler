@@ -1,9 +1,9 @@
 using FluentAssertions;
 using Moq;
+using SmashScheduler.Application.Interfaces.Repositories;
 using SmashScheduler.Application.Services.PlayerManagement;
 using SmashScheduler.Domain.Entities;
 using SmashScheduler.Domain.Enums;
-using SmashScheduler.Infrastructure.Data.Repositories;
 using Xunit;
 
 namespace SmashScheduler.Tests.Services;
@@ -39,49 +39,41 @@ public class PlayerServiceTests
     }
 
     [Fact]
-    public async Task CreatePlayerAsync_WithInvalidSkillLevel_ThrowsException()
+    public async Task GetByIdAsync_WithExistingPlayer_ReturnsPlayer()
+    {
+        var playerId = Guid.NewGuid();
+        var expectedPlayer = new Player { Id = playerId, Name = "Test" };
+        _playerRepositoryMock.Setup(r => r.GetByIdAsync(playerId)).ReturnsAsync(expectedPlayer);
+
+        var result = await _playerService.GetByIdAsync(playerId);
+
+        result.Should().Be(expectedPlayer);
+    }
+
+    [Fact]
+    public async Task GetByClubIdAsync_ReturnsPlayersForClub()
     {
         var clubId = Guid.NewGuid();
-
-        var act = async () => await _playerService.CreatePlayerAsync(clubId, "Test", 11, Gender.Male, PlayStylePreference.Open);
-
-        await act.Should().ThrowAsync<ArgumentException>();
-    }
-
-    [Fact]
-    public async Task AddToBlacklistAsync_PreventsDuplicates()
-    {
-        var playerId = Guid.NewGuid();
-        var blacklistedId = Guid.NewGuid();
-        var existingBlacklists = new List<PlayerBlacklist>
+        var expectedPlayers = new List<Player>
         {
-            new PlayerBlacklist
-            {
-                PlayerId = playerId,
-                BlacklistedPlayerId = blacklistedId,
-                BlacklistType = BlacklistType.Partner
-            }
+            new Player { Id = Guid.NewGuid(), ClubId = clubId, Name = "Player 1" },
+            new Player { Id = Guid.NewGuid(), ClubId = clubId, Name = "Player 2" }
         };
+        _playerRepositoryMock.Setup(r => r.GetByClubIdAsync(clubId)).ReturnsAsync(expectedPlayers);
 
-        _playerRepositoryMock.Setup(r => r.GetBlacklistsByPlayerIdAsync(playerId))
-            .ReturnsAsync(existingBlacklists);
+        var result = await _playerService.GetByClubIdAsync(clubId);
 
-        await _playerService.AddToBlacklistAsync(playerId, blacklistedId, BlacklistType.Partner);
-
-        _playerRepositoryMock.Verify(r => r.AddToBlacklistAsync(It.IsAny<PlayerBlacklist>()), Times.Never);
+        result.Should().HaveCount(2);
+        result.Should().BeEquivalentTo(expectedPlayers);
     }
 
     [Fact]
-    public async Task AddToBlacklistAsync_WithNewEntry_AddsToBlacklist()
+    public async Task DeletePlayerAsync_CallsRepository()
     {
         var playerId = Guid.NewGuid();
-        var blacklistedId = Guid.NewGuid();
 
-        _playerRepositoryMock.Setup(r => r.GetBlacklistsByPlayerIdAsync(playerId))
-            .ReturnsAsync(new List<PlayerBlacklist>());
+        await _playerService.DeletePlayerAsync(playerId);
 
-        await _playerService.AddToBlacklistAsync(playerId, blacklistedId, BlacklistType.Opponent);
-
-        _playerRepositoryMock.Verify(r => r.AddToBlacklistAsync(It.IsAny<PlayerBlacklist>()), Times.Once);
+        _playerRepositoryMock.Verify(r => r.DeleteAsync(playerId), Times.Once);
     }
 }

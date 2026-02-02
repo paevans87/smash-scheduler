@@ -521,3 +521,35 @@ html {
 code {
     color: #c02d76;
 }
+
+.manual-badge {
+    font-size: 0.65rem !important;
+    height: 20px !important;
+    padding: 0 8px !important;
+}
+
+.match-editor-section {
+    background: var(--smash-background);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+}
+
+.player-selectable {
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.player-selectable:hover {
+    background-color: rgba(46,204,113,0.08);
+    transform: translateX(4px);
+}
+
+.player-selectable--disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.player-selectable--disabled:hover {
+    background-color: transparent;
+    transform: none;
+}
