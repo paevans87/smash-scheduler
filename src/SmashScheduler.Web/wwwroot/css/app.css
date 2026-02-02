@@ -553,3 +553,18 @@ code {
     background-color: transparent;
     transform: none;
 }
+
+.empty-court--clickable {
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.empty-court--clickable:hover {
+    border-color: var(--smash-primary-500);
+    background: linear-gradient(135deg, rgba(46,204,113,0.08), rgba(46,204,113,0.04));
+    transform: translateY(-2px);
+}
+
+.empty-court--clickable:active {
+    transform: scale(0.98);
+}

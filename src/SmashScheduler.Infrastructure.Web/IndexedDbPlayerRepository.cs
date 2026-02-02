@@ -45,4 +45,30 @@ public class IndexedDbPlayerRepository(SmashSchedulerDb database) : IPlayerRepos
         await database.OpenAsync();
         await database.Players.DeleteAsync<string>(id.ToString());
     }
+
+    public async Task<List<PlayerBlacklist>> GetBlacklistsByPlayerIdAsync(Guid playerId)
+    {
+        await database.OpenAsync();
+        var allBlacklists = await database.PlayerBlacklists.GetAllAsync<PlayerBlacklist>();
+        return allBlacklists?.Where(b => b.PlayerId == playerId).ToList() ?? new List<PlayerBlacklist>();
+    }
+
+    public async Task AddToBlacklistAsync(PlayerBlacklist blacklist)
+    {
+        blacklist.CreatedAt = DateTime.UtcNow;
+        await database.OpenAsync();
+        await database.PlayerBlacklists.AddAsync(blacklist);
+    }
+
+    public async Task RemoveFromBlacklistAsync(Guid playerId, Guid blacklistedPlayerId)
+    {
+        await database.OpenAsync();
+        var allBlacklists = await database.PlayerBlacklists.GetAllAsync<PlayerBlacklist>();
+        var toRemove = allBlacklists?.FirstOrDefault(b => b.PlayerId == playerId && b.BlacklistedPlayerId == blacklistedPlayerId);
+        if (toRemove != null)
+        {
+            var key = $"{toRemove.PlayerId}-{toRemove.BlacklistedPlayerId}";
+            await database.PlayerBlacklists.DeleteAsync<string>(key);
+        }
+    }
 }

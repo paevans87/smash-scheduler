@@ -42,7 +42,8 @@ else
                       CanGenerateMatches="@CanGenerateMatches()"
                       OnGenerateMatches="GenerateMatches"
                       OnMatchComplete="CompleteMatch"
-                      OnMatchPlayersUpdate="UpdateMatchPlayers" />
+                      OnMatchPlayersUpdate="UpdateMatchPlayers"
+                      OnMatchCreate="CreateMatch" />
 }
 
 @code {
@@ -157,6 +158,12 @@ else
     private async Task UpdateMatchPlayers((Guid MatchId, List<Guid> PlayerIds) update)
     {
         await MatchService.UpdateMatchPlayersAsync(update.MatchId, update.PlayerIds);
+        await LoadData();
+    }
+
+    private async Task CreateMatch((int CourtNumber, List<Guid> PlayerIds) create)
+    {
+        await MatchService.CreateMatchAsync(SessionId, create.CourtNumber, create.PlayerIds, false);
         await LoadData();
     }
 

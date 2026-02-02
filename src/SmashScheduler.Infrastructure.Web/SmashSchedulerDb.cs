@@ -20,9 +20,13 @@ public class SmashSchedulerDb : IndexedDbDatabase
     [Index(Name = "sessionId", Path = "sessionId")]
     public IndexedDbObjectStore Matches { get; set; } = null!;
 
+    [ObjectStore(AutoIncrementKeys = false)]
+    [Index(Name = "playerId", Path = "playerId")]
+    public IndexedDbObjectStore PlayerBlacklists { get; set; } = null!;
+
     public SmashSchedulerDb(IJSRuntime jsRuntime) : base(jsRuntime)
     {
         Name = "SmashSchedulerDb";
-        Version = 1;
+        Version = 2;
     }
 }

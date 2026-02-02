@@ -9,7 +9,8 @@
                   PlayerLookup="@PlayerLookup"
                   IsReadOnly="false"
                   OnMatchComplete="@OnMatchComplete"
-                  OnMatchEdit="@HandleEditMatch" />
+                  OnMatchEdit="@HandleEditMatch"
+                  OnCreateMatch="@HandleCreateMatch" />
 
     <BenchDisplay BenchedPlayers="@GetBenchedPlayers()" />
 </MudStack>
@@ -32,6 +33,7 @@
     [Parameter] public EventCallback OnGenerateMatches { get; set; }
     [Parameter] public EventCallback<Guid> OnMatchComplete { get; set; }
     [Parameter] public EventCallback<(Guid MatchId, List<Guid> PlayerIds)> OnMatchPlayersUpdate { get; set; }
+    [Parameter] public EventCallback<(int CourtNumber, List<Guid> PlayerIds)> OnMatchCreate { get; set; }
     [Parameter] public bool CanGenerateMatches { get; set; }
 
     private bool IsGenerating { get; set; }
@@ -99,6 +101,38 @@
         if (result is { Canceled: false, Data: List<Guid> newPlayerIds })
         {
             await OnMatchPlayersUpdate.InvokeAsync((matchId, newPlayerIds));
+        }
+    }
+
+    private async Task HandleCreateMatch(int courtNumber)
+    {
+        var benchPlayerIds = GetBenchedPlayers().Select(p => p.Id).ToList();
+
+        if (benchPlayerIds.Count < 4)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<ManualMatchDialog>
+        {
+            { x => x.CourtNumber, courtNumber },
+            { x => x.PlayerLookup, PlayerLookup },
+            { x => x.BenchPlayerIds, benchPlayerIds }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<ManualMatchDialog>("Create Manual Match", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: List<Guid> playerIds })
+        {
+            await OnMatchCreate.InvokeAsync((courtNumber, playerIds));
         }
     }
 }
