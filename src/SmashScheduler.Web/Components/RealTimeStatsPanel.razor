@@ -1,0 +1,174 @@
+@using MudBlazor
+@using SmashScheduler.Domain.Entities
+@using SmashScheduler.Domain.Enums
+
+<MudExpansionPanels Class="mb-4">
+    <MudExpansionPanel Text="Session Statistics">
+        <TitleContent>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.Analytics" Color="Color.Primary" />
+                <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Session Statistics</MudText>
+                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Text">
+                    @GetInProgressCount() playing • @CompletedMatchCount completed
+                </MudChip>
+            </MudStack>
+        </TitleContent>
+        <ChildContent>
+            <MudGrid Spacing="2" Class="mb-3">
+                <MudItem xs="6" sm="3">
+                    <MudPaper Class="pa-3 text-center" Elevation="0" Style="background-color: var(--mud-palette-primary-lighten);">
+                        <MudText Typo="Typo.h5" Color="Color.Primary">@GetInProgressCount()</MudText>
+                        <MudText Typo="Typo.caption">In Progress</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudPaper Class="pa-3 text-center" Elevation="0" Style="background-color: var(--mud-palette-success-lighten);">
+                        <MudText Typo="Typo.h5" Color="Color.Success">@CompletedMatchCount</MudText>
+                        <MudText Typo="Typo.caption">Completed</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudPaper Class="pa-3 text-center" Elevation="0" Style="background-color: var(--mud-palette-info-lighten);">
+                        <MudText Typo="Typo.h5" Color="Color.Info">@BenchCount</MudText>
+                        <MudText Typo="Typo.caption">On Bench</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudPaper Class="pa-3 text-center" Elevation="0" Style="background-color: var(--mud-palette-secondary-lighten);">
+                        <MudText Typo="Typo.h5" Color="Color.Secondary">@FormatDuration(TotalPlayTime)</MudText>
+                        <MudText Typo="Typo.caption">Total Play Time</MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+
+            <MudText Typo="Typo.subtitle2" Class="mb-2" Style="font-weight: 600;">Player Statistics</MudText>
+            <MudSimpleTable Dense="true" Hover="true" Bordered="true" Style="max-height: 300px; overflow-y: auto;">
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        <th style="text-align: center;">Games</th>
+                        <th style="text-align: center;">Play Time</th>
+                        <th style="text-align: center;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var stat in GetPlayerStats())
+                    {
+                        <tr>
+                            <td>
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudText Typo="Typo.body2">@stat.Name</MudText>
+                                    <SkillLevelBadge SkillLevel="@stat.SkillLevel" Size="Size.Small" />
+                                </MudStack>
+                            </td>
+                            <td style="text-align: center;">@stat.GamesPlayed</td>
+                            <td style="text-align: center;">@FormatDuration(stat.PlayTime)</td>
+                            <td style="text-align: center;">
+                                @if (stat.IsPlaying)
+                                {
+                                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled">Playing</MudChip>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Outlined">Bench</MudChip>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </ChildContent>
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
+@code {
+    [Parameter, EditorRequired] public Session Session { get; set; } = null!;
+    [Parameter] public List<Match> Matches { get; set; } = new();
+    [Parameter] public Dictionary<Guid, Player> PlayerLookup { get; set; } = new();
+
+    private int CompletedMatchCount => Matches.Count(m => m.State == MatchState.Completed);
+    private int BenchCount => GetBenchPlayerIds().Count;
+
+    private TimeSpan TotalPlayTime => Matches
+        .Where(m => m.State == MatchState.Completed && m.CompletedAt.HasValue)
+        .Aggregate(TimeSpan.Zero, (total, m) => total + (m.CompletedAt!.Value - m.StartedAt));
+
+    private int GetInProgressCount() => Matches.Count(m => m.State == MatchState.InProgress);
+
+    private HashSet<Guid> GetPlayingPlayerIds() => Matches
+        .Where(m => m.State == MatchState.InProgress)
+        .SelectMany(m => m.PlayerIds)
+        .ToHashSet();
+
+    private List<Guid> GetBenchPlayerIds()
+    {
+        var playingIds = GetPlayingPlayerIds();
+        return Session.SessionPlayers
+            .Where(sp => sp.IsActive && !playingIds.Contains(sp.PlayerId))
+            .Select(sp => sp.PlayerId)
+            .ToList();
+    }
+
+    private IEnumerable<PlayerStat> GetPlayerStats()
+    {
+        var playingIds = GetPlayingPlayerIds();
+        var gamesPerPlayer = new Dictionary<Guid, int>();
+        var timePerPlayer = new Dictionary<Guid, TimeSpan>();
+
+        foreach (var match in Matches)
+        {
+            var duration = match.CompletedAt.HasValue
+                ? match.CompletedAt.Value - match.StartedAt
+                : (match.State == MatchState.InProgress ? DateTime.UtcNow - match.StartedAt : TimeSpan.Zero);
+
+            foreach (var playerId in match.PlayerIds)
+            {
+                gamesPerPlayer.TryGetValue(playerId, out var games);
+                gamesPerPlayer[playerId] = games + 1;
+
+                timePerPlayer.TryGetValue(playerId, out var time);
+                timePerPlayer[playerId] = time + duration;
+            }
+        }
+
+        return Session.SessionPlayers
+            .Where(sp => sp.IsActive && PlayerLookup.ContainsKey(sp.PlayerId))
+            .Select(sp =>
+            {
+                var player = PlayerLookup[sp.PlayerId];
+                gamesPerPlayer.TryGetValue(sp.PlayerId, out var games);
+                timePerPlayer.TryGetValue(sp.PlayerId, out var time);
+
+                return new PlayerStat
+                {
+                    Id = sp.PlayerId,
+                    Name = player.Name,
+                    SkillLevel = player.SkillLevel,
+                    GamesPlayed = games,
+                    PlayTime = time,
+                    IsPlaying = playingIds.Contains(sp.PlayerId)
+                };
+            })
+            .OrderByDescending(p => p.GamesPlayed)
+            .ThenByDescending(p => p.PlayTime);
+    }
+
+    private string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalHours >= 1)
+            return $"{(int)duration.TotalHours}h {duration.Minutes}m";
+        if (duration.TotalMinutes >= 1)
+            return $"{(int)duration.TotalMinutes}m";
+        return "< 1m";
+    }
+
+    private class PlayerStat
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public int SkillLevel { get; set; }
+        public int GamesPlayed { get; set; }
+        public TimeSpan PlayTime { get; set; }
+        public bool IsPlaying { get; set; }
+    }
+}

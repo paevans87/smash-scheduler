@@ -39,6 +39,10 @@ else
         </MudStack>
     </MudStack>
 
+    <RealTimeStatsPanel Session="@_session"
+                        Matches="@_activeMatches"
+                        PlayerLookup="@_playerLookup" />
+
     <MatchmakingPanel Session="@_session"
                       ActiveMatches="@_activeMatches"
                       PlayerLookup="@_playerLookup"
