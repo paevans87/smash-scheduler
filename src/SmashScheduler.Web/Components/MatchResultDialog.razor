@@ -11,65 +11,85 @@
     </TitleContent>
     <DialogContent>
         <MudStack Spacing="4">
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                Click a team to select the winner, or enter scores
+            </MudText>
+
             <MudGrid Spacing="4" Justify="Justify.Center">
                 <MudItem xs="5">
-                    <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-primary-lighten); border-radius: 8px;">
-                        <MudText Typo="Typo.caption" Color="Color.Primary" Style="font-weight: 600;">TEAM 1</MudText>
+                    <MudPaper Class="@GetTeamCardClass(1)"
+                              Elevation="@GetTeamElevation(1)"
+                              Style="@GetTeamCardStyle(1)"
+                              @onclick="() => SelectWinner(1)">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.caption" Color="@GetTeamLabelColour(1)" Style="font-weight: 600;">TEAM 1</MudText>
+                            @if (_selectedWinner == 1)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.EmojiEvents" Color="Color.Warning" Size="Size.Small" />
+                            }
+                        </MudStack>
                         @foreach (var player in GetTeam1Players())
                         {
                             <MudText Typo="Typo.body2" Class="mt-1">@player.Name</MudText>
                         }
                         <MudNumericField T="int?"
-                                         @bind-Value="_team1Score"
+                                         Value="_team1Score"
+                                         ValueChanged="OnTeam1ScoreChanged"
                                          Label="Score"
                                          Variant="Variant.Outlined"
                                          Min="0"
                                          Class="mt-3"
-                                         Immediate="true" />
+                                         Immediate="true"
+                                         @onclick:stopPropagation="true" />
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="2" Class="d-flex align-center justify-center">
                     <MudText Typo="Typo.h5" Color="Color.Secondary">vs</MudText>
                 </MudItem>
                 <MudItem xs="5">
-                    <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-secondary-lighten); border-radius: 8px;">
-                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight: 600;">TEAM 2</MudText>
+                    <MudPaper Class="@GetTeamCardClass(2)"
+                              Elevation="@GetTeamElevation(2)"
+                              Style="@GetTeamCardStyle(2)"
+                              @onclick="() => SelectWinner(2)">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.caption" Color="@GetTeamLabelColour(2)" Style="font-weight: 600;">TEAM 2</MudText>
+                            @if (_selectedWinner == 2)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.EmojiEvents" Color="Color.Warning" Size="Size.Small" />
+                            }
+                        </MudStack>
                         @foreach (var player in GetTeam2Players())
                         {
                             <MudText Typo="Typo.body2" Class="mt-1">@player.Name</MudText>
                         }
                         <MudNumericField T="int?"
-                                         @bind-Value="_team2Score"
+                                         Value="_team2Score"
+                                         ValueChanged="OnTeam2ScoreChanged"
                                          Label="Score"
                                          Variant="Variant.Outlined"
                                          Min="0"
                                          Class="mt-3"
-                                         Immediate="true" />
+                                         Immediate="true"
+                                         @onclick:stopPropagation="true" />
                     </MudPaper>
                 </MudItem>
             </MudGrid>
 
-            @if (HasValidScores && !IsDraw)
+            @if (_selectedWinner.HasValue)
             {
-                <MudAlert Severity="Severity.Info" Dense="true" Icon="@Icons.Material.Filled.Info">
+                <MudAlert Severity="Severity.Success" Dense="true" Icon="@Icons.Material.Filled.EmojiEvents">
                     Winner: @GetWinnerDescription()
-                </MudAlert>
-            }
-            else if (IsDraw)
-            {
-                <MudAlert Severity="Severity.Warning" Dense="true" Icon="@Icons.Material.Filled.Warning">
-                    Draw - no winner will be recorded
                 </MudAlert>
             }
         </MudStack>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
-        <MudButton OnClick="SkipScore" Variant="Variant.Outlined" Color="Color.Default">Skip Score</MudButton>
+        <MudButton OnClick="SkipResult" Variant="Variant.Outlined" Color="Color.Default">Skip Result</MudButton>
         <MudButton OnClick="Submit"
                    Color="Color.Primary"
                    Variant="Variant.Filled"
-                   Disabled="@(!HasValidScores)">
+                   Disabled="@(!CanSubmit)">
             Complete
         </MudButton>
     </DialogActions>
@@ -82,9 +102,10 @@
 
     private int? _team1Score;
     private int? _team2Score;
+    private int? _selectedWinner;
 
     private bool HasValidScores => _team1Score.HasValue && _team2Score.HasValue;
-    private bool IsDraw => HasValidScores && _team1Score == _team2Score;
+    private bool CanSubmit => _selectedWinner.HasValue || HasValidScores;
 
     private IEnumerable<Player> GetTeam1Players()
     {
@@ -100,37 +121,95 @@
             .Select(id => PlayerLookup[id]);
     }
 
+    private void SelectWinner(int team)
+    {
+        _selectedWinner = _selectedWinner == team ? null : team;
+    }
+
+    private void OnTeam1ScoreChanged(int? value)
+    {
+        _team1Score = value;
+        UpdateWinnerFromScores();
+    }
+
+    private void OnTeam2ScoreChanged(int? value)
+    {
+        _team2Score = value;
+        UpdateWinnerFromScores();
+    }
+
+    private void UpdateWinnerFromScores()
+    {
+        if (!HasValidScores) return;
+
+        if (_team1Score > _team2Score)
+            _selectedWinner = 1;
+        else if (_team2Score > _team1Score)
+            _selectedWinner = 2;
+        else
+            _selectedWinner = null;
+    }
+
+    private string GetTeamCardClass(int team)
+    {
+        return _selectedWinner == team ? "pa-3 team-card team-card--selected" : "pa-3 team-card";
+    }
+
+    private int GetTeamElevation(int team)
+    {
+        return _selectedWinner == team ? 4 : 0;
+    }
+
+    private string GetTeamCardStyle(int team)
+    {
+        var baseColour = team == 1
+            ? "var(--mud-palette-primary-lighten)"
+            : "var(--mud-palette-secondary-lighten)";
+
+        var borderColour = _selectedWinner == team ? "var(--mud-palette-warning)" : "transparent";
+
+        return $"background-color: {baseColour}; border-radius: 8px; cursor: pointer; border: 2px solid {borderColour}; transition: all 0.2s ease;";
+    }
+
+    private Color GetTeamLabelColour(int team)
+    {
+        return team == 1 ? Color.Primary : Color.Secondary;
+    }
+
     private string GetWinnerDescription()
     {
-        if (!HasValidScores || IsDraw) return string.Empty;
+        if (!_selectedWinner.HasValue) return string.Empty;
 
-        var winningTeam = _team1Score > _team2Score ? GetTeam1Players() : GetTeam2Players();
+        var winningTeam = _selectedWinner == 1 ? GetTeam1Players() : GetTeam2Players();
         return string.Join(" & ", winningTeam.Select(p => p.Name));
     }
 
     private List<Guid> GetWinningPlayerIds()
     {
-        if (!HasValidScores || IsDraw) return new List<Guid>();
+        if (!_selectedWinner.HasValue) return new List<Guid>();
 
-        return _team1Score > _team2Score
+        return _selectedWinner == 1
             ? Match.PlayerIds.Take(2).ToList()
             : Match.PlayerIds.Skip(2).Take(2).ToList();
     }
 
     private void Cancel() => MudDialog.Cancel();
 
-    private void SkipScore()
+    private void SkipResult()
     {
         MudDialog.Close(DialogResult.Ok<(MatchScore?, List<Guid>?)>((null, null)));
     }
 
     private void Submit()
     {
-        if (!HasValidScores) return;
+        if (!CanSubmit) return;
 
-        var score = new MatchScore(_team1Score!.Value, _team2Score!.Value);
+        MatchScore? score = HasValidScores
+            ? new MatchScore(_team1Score!.Value, _team2Score!.Value)
+            : null;
+
         var winners = GetWinningPlayerIds();
 
-        MudDialog.Close(DialogResult.Ok<(MatchScore?, List<Guid>?)>((score, winners)));
+        MudDialog.Close(DialogResult.Ok<(MatchScore?, List<Guid>?)>((score, winners.Count > 0 ? winners : null)));
     }
 }
