@@ -5,10 +5,13 @@
 @using SmashScheduler.Application.Services.Matchmaking.Models
 @using SmashScheduler.Domain.Entities
 @using SmashScheduler.Domain.Enums
+@using SmashScheduler.Domain.ValueObjects
+@using SmashScheduler.Web.Components
 @inject ISessionService SessionService
 @inject ISessionStateManager SessionStateManager
 @inject IMatchService MatchService
 @inject IMatchmakingService MatchmakingService
+@inject IDialogService DialogService
 @inject NavigationManager Navigation
 
 <PageTitle>Active Session</PageTitle>
@@ -151,8 +154,31 @@ else
 
     private async Task CompleteMatch(Guid matchId)
     {
-        await MatchService.CompleteMatchAsync(matchId, null, null);
-        await LoadData();
+        var match = _activeMatches.FirstOrDefault(m => m.Id == matchId);
+        if (match == null) return;
+
+        var parameters = new DialogParameters<MatchResultDialog>
+        {
+            { x => x.Match, match },
+            { x => x.PlayerLookup, _playerLookup }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog = await DialogService.ShowAsync<MatchResultDialog>("Complete Match", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            var (score, winners) = ((MatchScore?, List<Guid>?))result.Data!;
+            await MatchService.CompleteMatchAsync(matchId, winners, score);
+            await LoadData();
+        }
     }
 
     private async Task UpdateMatchPlayers((Guid MatchId, List<Guid> PlayerIds) update)

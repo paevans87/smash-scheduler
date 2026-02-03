@@ -1,0 +1,136 @@
+@using MudBlazor
+@using SmashScheduler.Domain.Entities
+@using SmashScheduler.Domain.ValueObjects
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.EmojiEvents" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Complete Match - Court @Match.CourtNumber</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="4">
+            <MudGrid Spacing="4" Justify="Justify.Center">
+                <MudItem xs="5">
+                    <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-primary-lighten); border-radius: 8px;">
+                        <MudText Typo="Typo.caption" Color="Color.Primary" Style="font-weight: 600;">TEAM 1</MudText>
+                        @foreach (var player in GetTeam1Players())
+                        {
+                            <MudText Typo="Typo.body2" Class="mt-1">@player.Name</MudText>
+                        }
+                        <MudNumericField T="int?"
+                                         @bind-Value="_team1Score"
+                                         Label="Score"
+                                         Variant="Variant.Outlined"
+                                         Min="0"
+                                         Class="mt-3"
+                                         Immediate="true" />
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="2" Class="d-flex align-center justify-center">
+                    <MudText Typo="Typo.h5" Color="Color.Secondary">vs</MudText>
+                </MudItem>
+                <MudItem xs="5">
+                    <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-secondary-lighten); border-radius: 8px;">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight: 600;">TEAM 2</MudText>
+                        @foreach (var player in GetTeam2Players())
+                        {
+                            <MudText Typo="Typo.body2" Class="mt-1">@player.Name</MudText>
+                        }
+                        <MudNumericField T="int?"
+                                         @bind-Value="_team2Score"
+                                         Label="Score"
+                                         Variant="Variant.Outlined"
+                                         Min="0"
+                                         Class="mt-3"
+                                         Immediate="true" />
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+
+            @if (HasValidScores && !IsDraw)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Icon="@Icons.Material.Filled.Info">
+                    Winner: @GetWinnerDescription()
+                </MudAlert>
+            }
+            else if (IsDraw)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Icon="@Icons.Material.Filled.Warning">
+                    Draw - no winner will be recorded
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton OnClick="SkipScore" Variant="Variant.Outlined" Color="Color.Default">Skip Score</MudButton>
+        <MudButton OnClick="Submit"
+                   Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   Disabled="@(!HasValidScores)">
+            Complete
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter, EditorRequired] public Match Match { get; set; } = null!;
+    [Parameter] public Dictionary<Guid, Player> PlayerLookup { get; set; } = new();
+
+    private int? _team1Score;
+    private int? _team2Score;
+
+    private bool HasValidScores => _team1Score.HasValue && _team2Score.HasValue;
+    private bool IsDraw => HasValidScores && _team1Score == _team2Score;
+
+    private IEnumerable<Player> GetTeam1Players()
+    {
+        return Match.PlayerIds.Take(2)
+            .Where(id => PlayerLookup.ContainsKey(id))
+            .Select(id => PlayerLookup[id]);
+    }
+
+    private IEnumerable<Player> GetTeam2Players()
+    {
+        return Match.PlayerIds.Skip(2).Take(2)
+            .Where(id => PlayerLookup.ContainsKey(id))
+            .Select(id => PlayerLookup[id]);
+    }
+
+    private string GetWinnerDescription()
+    {
+        if (!HasValidScores || IsDraw) return string.Empty;
+
+        var winningTeam = _team1Score > _team2Score ? GetTeam1Players() : GetTeam2Players();
+        return string.Join(" & ", winningTeam.Select(p => p.Name));
+    }
+
+    private List<Guid> GetWinningPlayerIds()
+    {
+        if (!HasValidScores || IsDraw) return new List<Guid>();
+
+        return _team1Score > _team2Score
+            ? Match.PlayerIds.Take(2).ToList()
+            : Match.PlayerIds.Skip(2).Take(2).ToList();
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void SkipScore()
+    {
+        MudDialog.Close(DialogResult.Ok<(MatchScore?, List<Guid>?)>((null, null)));
+    }
+
+    private void Submit()
+    {
+        if (!HasValidScores) return;
+
+        var score = new MatchScore(_team1Score!.Value, _team2Score!.Value);
+        var winners = GetWinningPlayerIds();
+
+        MudDialog.Close(DialogResult.Ok<(MatchScore?, List<Guid>?)>((score, winners)));
+    }
+}
