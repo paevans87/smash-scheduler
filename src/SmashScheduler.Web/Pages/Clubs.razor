@@ -1,12 +1,11 @@
 @page "/clubs"
-@using MudBlazor
-@using SmashScheduler.Domain.Enums
-@using SmashScheduler.Web.Components
+@using SmashScheduler.Web.Services
 @inherits FluxorComponent
 @inject IState<ClubState> ClubState
 @inject IDispatcher Dispatcher
 @inject IDialogService DialogService
 @inject NavigationManager Navigation
+@inject IBreadcrumbService BreadcrumbService
 
 <PageTitle>Clubs</PageTitle>
 
@@ -93,6 +92,11 @@ else
     {
         base.OnInitialized();
         Dispatcher.Dispatch(new LoadClubsAction());
+        
+        var items = new List<BreadcrumbItem> { 
+            new("Home", "/")
+        };
+        BreadcrumbService.SetBreadcrumbs(items);
     }
 
     private void NavigateToClub(Guid clubId)

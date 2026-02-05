@@ -1,3 +1,5 @@
+@inject IBreadcrumbService BreadcrumbService
+@using SmashScheduler.Web.Services
 @using SmashScheduler.Web.Themes
 @inherits LayoutComponentBase
 
@@ -17,7 +19,40 @@
     </MudAppBar>
     <MudMainContent Class="smash-main-content">
         <MudContainer MaxWidth="MaxWidth.Large">
+            @if (_items.Any())
+            {
+                <MudBreadcrumbs Items="_items" />
+            }
+            
+        </MudContainer>
+        <MudContainer MaxWidth="MaxWidth.Large">
             @Body
         </MudContainer>
     </MudMainContent>
 </MudLayout>
+
+@code {
+    private List<BreadcrumbItem> _items = new();
+
+    protected override void OnInitialized()
+    {
+        _items = BreadcrumbService.Items;
+        
+        // Subscribe to future changes
+        BreadcrumbService.OnChange += HandleBreadcrumbsChanged;
+    }
+
+    private void HandleBreadcrumbsChanged()
+    {
+        InvokeAsync(() =>
+        {
+            _items = BreadcrumbService.Items;
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        BreadcrumbService.OnChange -= HandleBreadcrumbsChanged;
+    }
+}

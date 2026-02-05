@@ -12,6 +12,7 @@ using SmashScheduler.Application.Services.Analytics;
 using Fluxor;
 using SmashScheduler.Infrastructure.Web;
 using SmashScheduler.Web;
+using SmashScheduler.Web.Services;
 using SmashScheduler.Web.Themes;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -38,5 +39,7 @@ builder.Services.AddScoped<IMatchService, MatchService>();
 builder.Services.AddScoped<IMatchmakingService, MatchmakingService>();
 builder.Services.AddScoped<ISessionStateManager, SessionStateManager>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+
+builder.Services.AddSingleton<IBreadcrumbService, BreadcrumbService>();
 
 await builder.Build().RunAsync();

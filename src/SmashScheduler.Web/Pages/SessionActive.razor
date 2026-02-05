@@ -1,4 +1,5 @@
 @page "/clubs/{ClubId:guid}/sessions/{SessionId:guid}/active"
+@using SmashScheduler.Application.Services.ClubManagement
 @using SmashScheduler.Application.Services.SessionManagement
 @using SmashScheduler.Application.Services.MatchManagement
 @using SmashScheduler.Application.Services.Matchmaking
@@ -6,13 +7,15 @@
 @using SmashScheduler.Domain.Entities
 @using SmashScheduler.Domain.Enums
 @using SmashScheduler.Domain.ValueObjects
-@using SmashScheduler.Web.Components
+@using SmashScheduler.Web.Services
 @inject ISessionService SessionService
 @inject ISessionStateManager SessionStateManager
 @inject IMatchService MatchService
 @inject IMatchmakingService MatchmakingService
 @inject IDialogService DialogService
 @inject NavigationManager Navigation
+@inject IBreadcrumbService BreadcrumbService
+@inject IClubService ClubService
 
 <PageTitle>Active Session</PageTitle>
 
@@ -66,6 +69,15 @@ else
     protected override async Task OnInitializedAsync()
     {
         await LoadData();
+        var club = await ClubService.GetByIdAsync(ClubId);
+        
+        var items = new List<BreadcrumbItem> { 
+            new("Home", "/"), 
+            new("Clubs", "/clubs"),
+            new(club?.Name ?? "club", $"/clubs/{ClubId}"),
+            new("Sessions", $"/clubs/{ClubId}/sessions")
+        };
+        BreadcrumbService.SetBreadcrumbs(items);
     }
 
     private async Task LoadData()

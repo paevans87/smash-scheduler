@@ -1,10 +1,12 @@
 @page "/clubs/{ClubId:guid}/players"
+@using SmashScheduler.Application.Services.ClubManagement
 @using SmashScheduler.Application.Services.PlayerManagement
 @using SmashScheduler.Domain.Entities
-@using SmashScheduler.Domain.Enums
-@using SmashScheduler.Web.Components
+@using SmashScheduler.Web.Services
 @inject IPlayerService PlayerService
 @inject IDialogService DialogService
+@inject IBreadcrumbService BreadcrumbService
+@inject IClubService ClubService
 
 <PageTitle>Players</PageTitle>
 
@@ -63,6 +65,14 @@ else
     protected override async Task OnInitializedAsync()
     {
         _players = await PlayerService.GetByClubIdAsync(ClubId);
+        var club = await ClubService.GetByIdAsync(ClubId);
+        
+        var items = new List<BreadcrumbItem> { 
+            new("Home", "/"), 
+            new("Clubs", "/clubs"),
+            new(club?.Name ?? "club", $"/clubs/{ClubId}")
+        };
+        BreadcrumbService.SetBreadcrumbs(items);
     }
 
     private async Task OpenCreateDialog()

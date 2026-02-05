@@ -1,5 +1,8 @@
 @page "/"
+@using SmashScheduler.Web.Services
 @using MudBlazor
+
+@inject IBreadcrumbService BreadcrumbService
 
 <PageTitle>SmashScheduler</PageTitle>
 
@@ -47,3 +50,12 @@
         </MudPaper>
     </MudItem>
 </MudGrid>
+
+@code
+{
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        BreadcrumbService.SetBreadcrumbs(new List<BreadcrumbItem>());
+    }
+}

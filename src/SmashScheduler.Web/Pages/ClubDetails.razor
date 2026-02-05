@@ -1,14 +1,15 @@
 @page "/clubs/{ClubId:guid}"
-@using MudBlazor
 @using SmashScheduler.Application.Services.ClubManagement
 @using SmashScheduler.Application.Services.SessionManagement
 @using SmashScheduler.Domain.Entities
 @using SmashScheduler.Domain.Enums
-@using SmashScheduler.Web.Components
+@using SmashScheduler.Web.Services
+
 @inject IClubService ClubService
 @inject ISessionService SessionService
 @inject IDialogService DialogService
 @inject NavigationManager Navigation
+@inject IBreadcrumbService BreadcrumbService
 
 <PageTitle>Club Details</PageTitle>
 
@@ -138,6 +139,12 @@ else
     {
         _club = await ClubService.GetByIdAsync(ClubId);
         _sessions = await SessionService.GetByClubIdAsync(ClubId);
+        
+        var items = new List<BreadcrumbItem> { 
+            new("Home", "/"), 
+            new("Clubs", "/clubs") 
+        };
+        BreadcrumbService.SetBreadcrumbs(items);
     }
 
     private void ViewPlayers()

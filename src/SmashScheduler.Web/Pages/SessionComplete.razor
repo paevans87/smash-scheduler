@@ -1,11 +1,15 @@
 @page "/clubs/{ClubId:guid}/sessions/{SessionId:guid}/complete"
+@using SmashScheduler.Application.Services.ClubManagement
 @using SmashScheduler.Application.Services.SessionManagement
 @using SmashScheduler.Application.Services.MatchManagement
 @using SmashScheduler.Domain.Entities
 @using SmashScheduler.Domain.Enums
+@using SmashScheduler.Web.Services
 @inject ISessionService SessionService
 @inject IMatchService MatchService
 @inject NavigationManager Navigation
+@inject IBreadcrumbService BreadcrumbService
+@inject IClubService ClubService
 
 <PageTitle>Session Complete</PageTitle>
 
@@ -96,6 +100,16 @@ else
                 .Where(sp => sp.Player != null)
                 .ToDictionary(sp => sp.PlayerId, sp => sp.Player!);
         }
+        
+        var club = await ClubService.GetByIdAsync(ClubId);
+        
+        var items = new List<BreadcrumbItem> { 
+            new("Home", "/"), 
+            new("Clubs", "/clubs"),
+            new(club?.Name ?? "club", $"/clubs/{ClubId}"),
+            new("Sessions", $"/clubs/{ClubId}/sessions")
+        };
+        BreadcrumbService.SetBreadcrumbs(items);
     }
 
     private void GoBack()

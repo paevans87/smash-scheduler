@@ -1,10 +1,14 @@
 @page "/clubs/{ClubId:guid}/sessions"
+@using SmashScheduler.Application.Services.ClubManagement
 @using SmashScheduler.Domain.Entities
 @using SmashScheduler.Domain.Enums
+@using SmashScheduler.Web.Services
 @inherits FluxorComponent
 @inject IState<SessionStoreState> SessionState
 @inject IDispatcher Dispatcher
 @inject NavigationManager Navigation
+@inject IClubService ClubService
+@inject IBreadcrumbService BreadcrumbService
 
 <PageTitle>Sessions</PageTitle>
 
@@ -60,10 +64,18 @@ else
     [Parameter] public Guid ClubId { get; set; }
     private SessionState? _selectedState;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        base.OnInitialized();
+        await base.OnInitializedAsync();
         Dispatcher.Dispatch(new LoadSessionsAction(ClubId));
+        var club = await ClubService.GetByIdAsync(ClubId);
+        
+        var items = new List<BreadcrumbItem> { 
+            new("Home", "/"), 
+            new("Clubs", "/clubs"),
+            new(club?.Name ?? "club", $"/clubs/{ClubId}")
+        };
+        BreadcrumbService.SetBreadcrumbs(items);
     }
 
     private void OnFilterChanged()
