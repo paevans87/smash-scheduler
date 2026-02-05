@@ -1,13 +1,19 @@
-const CACHE_NAME = 'smash-scheduler-v1';
+const CACHE_NAME = 'smash-scheduler-v2';
 
 const PRECACHE_ASSETS = [
-    './',
-    './index.html',
     './css/app.css',
     './manifest.json',
     './icon-192.png',
     './icon.svg'
 ];
+
+function isNavigationOrFrameworkRequest(request) {
+    if (request.mode === 'navigate') return true;
+    const url = new URL(request.url);
+    return url.pathname === '/' ||
+           url.pathname.endsWith('/index.html') ||
+           url.pathname.includes('/_framework/');
+}
 
 self.addEventListener('install', event => {
     event.waitUntil(
@@ -34,6 +40,21 @@ self.addEventListener('fetch', event => {
         return;
     }
 
+    if (isNavigationOrFrameworkRequest(event.request)) {
+        event.respondWith(
+            fetch(event.request)
+                .then(response => {
+                    const responseToCache = response.clone();
+                    caches.open(CACHE_NAME)
+                        .then(cache => cache.put(event.request, responseToCache));
+                    return response;
+                })
+                .catch(() => caches.match(event.request)
+                    .then(cached => cached || caches.match('./index.html')))
+        );
+        return;
+    }
+
     event.respondWith(
         caches.match(event.request)
             .then(cachedResponse => {
@@ -53,9 +74,7 @@ self.addEventListener('fetch', event => {
 
                         return response;
                     })
-                    .catch(() => {
-                        return caches.match('./index.html');
-                    });
+                    .catch(() => caches.match('./index.html'));
             })
     );
 });
