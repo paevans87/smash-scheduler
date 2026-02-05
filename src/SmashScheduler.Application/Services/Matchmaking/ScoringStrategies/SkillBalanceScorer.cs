@@ -9,19 +9,46 @@ public class SkillBalanceScorer : IMatchScorer
     {
         var players = allPlayers.Where(p => candidate.PlayerIds.Contains(p.Id)).ToList();
 
-        if (players.Count == 0)
+        if (players.Count != 4)
         {
             return 0;
         }
 
-        var skillLevels = players.Select(p => p.SkillLevel).ToList();
-        var average = skillLevels.Average();
-        var variance = skillLevels.Select(s => Math.Pow(s - average, 2)).Average();
-        var standardDeviation = Math.Sqrt(variance);
+        var (bestDifference, bestOrder) = CalculateBestTeamBalance(players);
 
-        var maxDeviation = 9.0;
-        var normalisedDeviation = standardDeviation / maxDeviation;
+        candidate.PlayerIds = bestOrder.Select(p => p.Id).ToList();
 
-        return (1.0 - normalisedDeviation) * 100.0;
+        var maxPossibleDifference = 18.0;
+        var normalisedDifference = bestDifference / maxPossibleDifference;
+
+        return (1.0 - normalisedDifference) * 100.0;
+    }
+
+    private (int difference, List<Player> orderedPlayers) CalculateBestTeamBalance(List<Player> players)
+    {
+        var teamSplits = new[]
+        {
+            new[] { 0, 1, 2, 3 },
+            new[] { 0, 2, 1, 3 },
+            new[] { 0, 3, 1, 2 }
+        };
+
+        var minDifference = int.MaxValue;
+        var bestOrder = players;
+
+        foreach (var indices in teamSplits)
+        {
+            var team1Total = players[indices[0]].SkillLevel + players[indices[1]].SkillLevel;
+            var team2Total = players[indices[2]].SkillLevel + players[indices[3]].SkillLevel;
+            var difference = Math.Abs(team1Total - team2Total);
+
+            if (difference < minDifference)
+            {
+                minDifference = difference;
+                bestOrder = indices.Select(i => players[i]).ToList();
+            }
+        }
+
+        return (minDifference, bestOrder);
     }
 }

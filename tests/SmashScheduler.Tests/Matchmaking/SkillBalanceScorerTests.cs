@@ -31,7 +31,7 @@ public class SkillBalanceScorerTests
     }
 
     [Fact]
-    public void CalculateScore_WithImbalancedSkills_ReturnsLowerScore()
+    public void CalculateScore_WithMixedSkills_BalancesTeamsAndReturnsHighScore()
     {
         var players = CreatePlayers(new[] { 1, 1, 10, 10 });
         var candidate = new MatchCandidate
@@ -41,7 +41,41 @@ public class SkillBalanceScorerTests
 
         var score = _scorer.CalculateScore(candidate, players, new MatchScoringContext());
 
-        score.Should().BeLessOrEqualTo(50);
+        score.Should().Be(100);
+    }
+
+    [Fact]
+    public void CalculateScore_WithUnbalanceableSkills_ReturnsLowerScore()
+    {
+        var players = CreatePlayers(new[] { 1, 1, 1, 10 });
+        var candidate = new MatchCandidate
+        {
+            PlayerIds = players.Select(p => p.Id).ToList()
+        };
+
+        var score = _scorer.CalculateScore(candidate, players, new MatchScoringContext());
+
+        score.Should().BeLessThan(70);
+    }
+
+    [Fact]
+    public void CalculateScore_ReordersPlayersForBalancedTeams()
+    {
+        var players = CreatePlayers(new[] { 10, 10, 4, 4 });
+        var candidate = new MatchCandidate
+        {
+            PlayerIds = players.Select(p => p.Id).ToList()
+        };
+
+        _scorer.CalculateScore(candidate, players, new MatchScoringContext());
+
+        var team1Skills = new[] { players.First(p => p.Id == candidate.PlayerIds[0]).SkillLevel, players.First(p => p.Id == candidate.PlayerIds[1]).SkillLevel };
+        var team2Skills = new[] { players.First(p => p.Id == candidate.PlayerIds[2]).SkillLevel, players.First(p => p.Id == candidate.PlayerIds[3]).SkillLevel };
+
+        var team1Total = team1Skills.Sum();
+        var team2Total = team2Skills.Sum();
+
+        Math.Abs(team1Total - team2Total).Should().BeLessOrEqualTo(2);
     }
 
     [Fact]
