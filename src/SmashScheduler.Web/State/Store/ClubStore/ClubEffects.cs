@@ -24,7 +24,7 @@ public class ClubEffects(IClubService clubService)
     {
         try
         {
-            var club = await clubService.CreateClubAsync(action.Name, action.CourtCount, action.GameType);
+            var club = await clubService.CreateClubAsync(action.Name, action.CourtCount, action.GameType, action.ScoringWeights, action.BlacklistMode);
             dispatcher.Dispatch(new CreateClubSuccessAction(club));
         }
         catch (Exception ex)

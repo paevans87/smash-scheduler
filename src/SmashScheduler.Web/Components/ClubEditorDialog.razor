@@ -3,6 +3,7 @@
 @using SmashScheduler.Application.Services.PlayerManagement
 @using SmashScheduler.Domain.Entities
 @using SmashScheduler.Domain.Enums
+@using SmashScheduler.Domain.ValueObjects
 @inject IClubService ClubService
 @inject IPlayerService PlayerService
 
@@ -46,8 +47,58 @@
                 }
             </MudSelect>
 
+            <MudDivider Class="my-1" />
+            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Score Weighting</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Set the importance of each matching strategy. Values must total 100%.
+            </MudText>
+
+            <MudStack Spacing="2">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudText Typo="Typo.body2" Style="min-width: 120px;">Skill Balance</MudText>
+                    <MudSlider T="int" @bind-Value="_skillBalanceWeight" Min="0" Max="100" Step="5" Color="Color.Primary" Disabled="_isSubmitting" />
+                    <MudText Typo="Typo.body2" Style="min-width: 40px; text-align: right;">@(_skillBalanceWeight)%</MudText>
+                </MudStack>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudText Typo="Typo.body2" Style="min-width: 120px;">Match History</MudText>
+                    <MudSlider T="int" @bind-Value="_matchHistoryWeight" Min="0" Max="100" Step="5" Color="Color.Secondary" Disabled="_isSubmitting" />
+                    <MudText Typo="Typo.body2" Style="min-width: 40px; text-align: right;">@(_matchHistoryWeight)%</MudText>
+                </MudStack>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudText Typo="Typo.body2" Style="min-width: 120px;">Time Off Court</MudText>
+                    <MudSlider T="int" @bind-Value="_timeOffCourtWeight" Min="0" Max="100" Step="5" Color="Color.Tertiary" Disabled="_isSubmitting" />
+                    <MudText Typo="Typo.body2" Style="min-width: 40px; text-align: right;">@(_timeOffCourtWeight)%</MudText>
+                </MudStack>
+
+                @if (WeightTotal != 100)
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true">
+                        Weights total @(WeightTotal)% — they must add up to 100%.
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Success" Dense="true">
+                        Weights total 100%
+                    </MudAlert>
+                }
+            </MudStack>
+
+            <MudDivider Class="my-1" />
+            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Blacklist Behaviour</MudText>
+            <MudSelect T="BlacklistMode"
+                       @bind-Value="_blacklistMode"
+                       Label="Blacklist Mode"
+                       Variant="Variant.Outlined"
+                       Disabled="_isSubmitting"
+                       HelperText="@BlacklistModeHelperText">
+                <MudSelectItem Value="BlacklistMode.Preferred">Preferred</MudSelectItem>
+                <MudSelectItem Value="BlacklistMode.HardLimit">Hard Limit</MudSelectItem>
+            </MudSelect>
+
             @if (!IsEditMode)
             {
+                <MudDivider Class="my-1" />
                 <MudCheckBox @bind-Value="_seedTestData"
                              Label="Seed club with test data (26 players)"
                              Color="Color.Primary"
@@ -77,12 +128,24 @@
     private string _name = string.Empty;
     private int _courtCount = 4;
     private GameType _gameType = GameType.Doubles;
+    private int _skillBalanceWeight = 40;
+    private int _matchHistoryWeight = 35;
+    private int _timeOffCourtWeight = 25;
+    private BlacklistMode _blacklistMode = BlacklistMode.Preferred;
     private bool _seedTestData;
     private string? _errorMessage;
     private bool _isSubmitting;
 
     private bool IsEditMode => Club != null;
-    private bool IsValid => !string.IsNullOrWhiteSpace(_name) && !_isSubmitting;
+    private int WeightTotal => _skillBalanceWeight + _matchHistoryWeight + _timeOffCourtWeight;
+    private bool IsValid => !string.IsNullOrWhiteSpace(_name) && !_isSubmitting && WeightTotal == 100;
+
+    private string BlacklistModeHelperText => _blacklistMode switch
+    {
+        BlacklistMode.Preferred => "Blacklisted pairings are discouraged but still possible",
+        BlacklistMode.HardLimit => "Blacklisted pairings are never allowed",
+        _ => string.Empty
+    };
 
     protected override void OnInitialized()
     {
@@ -91,6 +154,11 @@
             _name = Club.Name;
             _courtCount = Club.DefaultCourtCount;
             _gameType = Club.GameType;
+            _blacklistMode = Club.BlacklistMode;
+            var weights = Club.ScoringWeights;
+            _skillBalanceWeight = weights.SkillBalance;
+            _matchHistoryWeight = weights.MatchHistory;
+            _timeOffCourtWeight = weights.TimeOffCourt;
         }
     }
 
@@ -105,17 +173,26 @@
 
         try
         {
+            var weights = new ScoringWeights
+            {
+                SkillBalance = _skillBalanceWeight,
+                MatchHistory = _matchHistoryWeight,
+                TimeOffCourt = _timeOffCourtWeight
+            };
+
             if (IsEditMode)
             {
                 Club!.Name = _name;
                 Club.DefaultCourtCount = _courtCount;
                 Club.GameType = _gameType;
+                Club.ScoringWeights = weights;
+                Club.BlacklistMode = _blacklistMode;
                 await ClubService.UpdateClubAsync(Club);
                 MudDialog.Close(DialogResult.Ok(Club));
             }
             else
             {
-                var club = await ClubService.CreateClubAsync(_name, _courtCount, _gameType);
+                var club = await ClubService.CreateClubAsync(_name, _courtCount, _gameType, weights, _blacklistMode);
 
                 if (_seedTestData)
                 {

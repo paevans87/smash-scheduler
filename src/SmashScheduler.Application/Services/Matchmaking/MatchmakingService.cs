@@ -3,22 +3,24 @@ using SmashScheduler.Application.Services.Matchmaking.Models;
 using SmashScheduler.Application.Services.Matchmaking.ScoringStrategies;
 using SmashScheduler.Domain.Entities;
 using SmashScheduler.Domain.Enums;
+using SmashScheduler.Domain.ValueObjects;
 
 namespace SmashScheduler.Application.Services.Matchmaking;
 
 public class MatchmakingService(
     ISessionRepository sessionRepository,
     IMatchRepository matchRepository,
-    IPlayerRepository playerRepository) : IMatchmakingService
+    IPlayerRepository playerRepository,
+    IClubRepository clubRepository) : IMatchmakingService
 {
-    private const double SkillBalanceWeight = 0.40;
-    private const double MatchHistoryWeight = 0.35;
-    private const double TimeOffCourtWeight = 0.25;
-
     public async Task<List<MatchCandidate>> GenerateMatchesAsync(Guid sessionId)
     {
         var session = await sessionRepository.GetByIdAsync(sessionId);
         if (session == null) throw new InvalidOperationException("Session not found");
+
+        var club = await clubRepository.GetByIdAsync(session.ClubId);
+        var weights = club?.ScoringWeights ?? new ScoringWeights();
+        var blacklistMode = club?.BlacklistMode ?? BlacklistMode.Preferred;
 
         var existingMatches = await matchRepository.GetBySessionIdAsync(sessionId);
 
@@ -41,6 +43,8 @@ public class MatchmakingService(
             }
         }
 
+        var blacklists = await LoadBlacklistsForPlayers(benchedPlayers);
+
         var usedCourts = existingMatches
             .Where(m => m.State == MatchState.InProgress)
             .Select(m => m.CourtNumber)
@@ -53,13 +57,17 @@ public class MatchmakingService(
         var completedMatches = existingMatches.Where(m => m.State == MatchState.Completed).ToList();
         var lastMatchTimes = BuildLastMatchCompletionTimes(completedMatches);
 
-        return GenerateScoredMatches(benchedPlayers, availableCourts, completedMatches, lastMatchTimes);
+        return GenerateScoredMatches(benchedPlayers, availableCourts, completedMatches, lastMatchTimes, weights, blacklistMode, blacklists);
     }
 
     public async Task<MatchCandidate?> GenerateSingleMatchAsync(Guid sessionId, int courtNumber)
     {
         var session = await sessionRepository.GetByIdAsync(sessionId);
         if (session == null) throw new InvalidOperationException("Session not found");
+
+        var club = await clubRepository.GetByIdAsync(session.ClubId);
+        var weights = club?.ScoringWeights ?? new ScoringWeights();
+        var blacklistMode = club?.BlacklistMode ?? BlacklistMode.Preferred;
 
         var existingMatches = await matchRepository.GetBySessionIdAsync(sessionId);
 
@@ -87,6 +95,7 @@ public class MatchmakingService(
             return null;
         }
 
+        var blacklists = await LoadBlacklistsForPlayers(benchedPlayers);
         var completedMatches = existingMatches.Where(m => m.State == MatchState.Completed).ToList();
         var lastMatchTimes = BuildLastMatchCompletionTimes(completedMatches);
         var context = new MatchScoringContext
@@ -95,7 +104,7 @@ public class MatchmakingService(
             LastMatchCompletionTimes = lastMatchTimes
         };
 
-        var bestCandidate = FindBestFoursomeWithScoring(benchedPlayers, context);
+        var bestCandidate = FindBestFoursomeWithScoring(benchedPlayers, context, weights, blacklistMode, blacklists);
         if (bestCandidate == null) return null;
 
         bestCandidate.CourtNumber = courtNumber;
@@ -106,7 +115,10 @@ public class MatchmakingService(
         List<Player> players,
         List<int> availableCourts,
         List<Match> completedMatches,
-        Dictionary<Guid, DateTime> lastMatchTimes)
+        Dictionary<Guid, DateTime> lastMatchTimes,
+        ScoringWeights weights,
+        BlacklistMode blacklistMode,
+        List<PlayerBlacklist> blacklists)
     {
         var candidates = new List<MatchCandidate>();
 
@@ -126,7 +138,7 @@ public class MatchmakingService(
 
         while (remainingPlayers.Count >= 4 && courtIndex < availableCourts.Count)
         {
-            var bestCandidate = FindBestFoursomeWithScoring(remainingPlayers, context);
+            var bestCandidate = FindBestFoursomeWithScoring(remainingPlayers, context, weights, blacklistMode, blacklists);
             if (bestCandidate == null) break;
 
             bestCandidate.CourtNumber = availableCourts[courtIndex];
@@ -142,7 +154,12 @@ public class MatchmakingService(
         return candidates;
     }
 
-    private MatchCandidate? FindBestFoursomeWithScoring(List<Player> availablePlayers, MatchScoringContext context)
+    private MatchCandidate? FindBestFoursomeWithScoring(
+        List<Player> availablePlayers,
+        MatchScoringContext context,
+        ScoringWeights weights,
+        BlacklistMode blacklistMode,
+        List<PlayerBlacklist> blacklists)
     {
         if (availablePlayers.Count < 4)
         {
@@ -153,6 +170,11 @@ public class MatchmakingService(
         var skillScorer = new SkillBalanceScorer();
         var historyScorer = new MatchHistoryScorer();
         var timeScorer = new TimeOffCourtScorer();
+        var blacklistScorer = new BlacklistAvoidanceScorer(blacklists);
+
+        var skillWeight = weights.SkillBalance / 100.0;
+        var historyWeight = weights.MatchHistory / 100.0;
+        var timeWeight = weights.TimeOffCourt / 100.0;
 
         MatchCandidate? bestCandidate = null;
         var bestScore = double.MinValue;
@@ -164,13 +186,24 @@ public class MatchmakingService(
                 PlayerIds = combination.Select(p => p.Id).ToList()
             };
 
+            if (blacklistMode == BlacklistMode.HardLimit && HasBlacklistViolation(candidate.PlayerIds, blacklists))
+            {
+                continue;
+            }
+
             var skillScore = skillScorer.CalculateScore(candidate, availablePlayers, context);
             var historyScore = historyScorer.CalculateScore(candidate, availablePlayers, context);
             var timeScore = timeScorer.CalculateScore(candidate, availablePlayers, context);
 
-            var totalScore = (skillScore * SkillBalanceWeight) +
-                             (historyScore * MatchHistoryWeight) +
-                             (timeScore * TimeOffCourtWeight);
+            var totalScore = (skillScore * skillWeight) +
+                             (historyScore * historyWeight) +
+                             (timeScore * timeWeight);
+
+            if (blacklistMode == BlacklistMode.Preferred && blacklists.Any())
+            {
+                var blacklistScore = blacklistScorer.CalculateScore(candidate, availablePlayers, context);
+                totalScore *= (blacklistScore / 100.0);
+            }
 
             candidate.TotalScore = totalScore;
 
@@ -182,6 +215,34 @@ public class MatchmakingService(
         }
 
         return bestCandidate;
+    }
+
+    private static bool HasBlacklistViolation(List<Guid> playerIds, List<PlayerBlacklist> blacklists)
+    {
+        foreach (var playerId in playerIds)
+        {
+            foreach (var blacklist in blacklists.Where(b => b.PlayerId == playerId))
+            {
+                if (playerIds.Contains(blacklist.BlacklistedPlayerId))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private async Task<List<PlayerBlacklist>> LoadBlacklistsForPlayers(List<Player> players)
+    {
+        var allBlacklists = new List<PlayerBlacklist>();
+        foreach (var player in players)
+        {
+            var blacklists = await playerRepository.GetBlacklistsByPlayerIdAsync(player.Id);
+            allBlacklists.AddRange(blacklists);
+        }
+
+        return allBlacklists;
     }
 
     private List<List<Player>> GenerateFoursomeCombinations(List<Player> players)

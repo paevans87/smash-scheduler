@@ -1,0 +1,234 @@
+using FluentAssertions;
+using Moq;
+using SmashScheduler.Application.Interfaces.Repositories;
+using SmashScheduler.Application.Services.Matchmaking;
+using SmashScheduler.Domain.Entities;
+using SmashScheduler.Domain.Enums;
+using SmashScheduler.Domain.ValueObjects;
+using Xunit;
+
+namespace SmashScheduler.Tests.Matchmaking;
+
+public class MatchmakingServiceTests
+{
+    private readonly Mock<ISessionRepository> _sessionRepositoryMock;
+    private readonly Mock<IMatchRepository> _matchRepositoryMock;
+    private readonly Mock<IPlayerRepository> _playerRepositoryMock;
+    private readonly Mock<IClubRepository> _clubRepositoryMock;
+    private readonly MatchmakingService _service;
+
+    public MatchmakingServiceTests()
+    {
+        _sessionRepositoryMock = new Mock<ISessionRepository>();
+        _matchRepositoryMock = new Mock<IMatchRepository>();
+        _playerRepositoryMock = new Mock<IPlayerRepository>();
+        _clubRepositoryMock = new Mock<IClubRepository>();
+        _service = new MatchmakingService(
+            _sessionRepositoryMock.Object,
+            _matchRepositoryMock.Object,
+            _playerRepositoryMock.Object,
+            _clubRepositoryMock.Object
+        );
+    }
+
+    [Fact]
+    public async Task GenerateMatchesAsync_UsesClubScoringWeights()
+    {
+        var clubId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var players = CreatePlayers(4);
+        var club = new Club
+        {
+            Id = clubId,
+            ScoringWeights = new ScoringWeights
+            {
+                SkillBalance = 100,
+                MatchHistory = 0,
+                TimeOffCourt = 0
+            }
+        };
+
+        SetupSession(sessionId, clubId, players);
+        _clubRepositoryMock.Setup(r => r.GetByIdAsync(clubId)).ReturnsAsync(club);
+        SetupEmptyBlacklists(players);
+
+        var result = await _service.GenerateMatchesAsync(sessionId);
+
+        result.Should().HaveCount(1);
+        result[0].PlayerIds.Should().HaveCount(4);
+    }
+
+    [Fact]
+    public async Task GenerateMatchesAsync_WithHardLimitBlacklist_ExcludesBlacklistedCombinations()
+    {
+        var clubId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var players = CreatePlayers(8);
+        var club = new Club
+        {
+            Id = clubId,
+            BlacklistMode = BlacklistMode.HardLimit,
+            ScoringWeights = new ScoringWeights()
+        };
+
+        SetupSession(sessionId, clubId, players, courtCount: 2);
+        _clubRepositoryMock.Setup(r => r.GetByIdAsync(clubId)).ReturnsAsync(club);
+
+        var blacklists = new List<PlayerBlacklist>
+        {
+            new PlayerBlacklist
+            {
+                PlayerId = players[0].Id,
+                BlacklistedPlayerId = players[1].Id,
+                BlacklistType = BlacklistType.Partner
+            }
+        };
+
+        foreach (var player in players)
+        {
+            var playerBlacklists = blacklists.Where(b => b.PlayerId == player.Id).ToList();
+            _playerRepositoryMock
+                .Setup(r => r.GetBlacklistsByPlayerIdAsync(player.Id))
+                .ReturnsAsync(playerBlacklists);
+        }
+
+        var result = await _service.GenerateMatchesAsync(sessionId);
+
+        result.Should().NotBeEmpty();
+        foreach (var candidate in result)
+        {
+            var containsBoth = candidate.PlayerIds.Contains(players[0].Id) &&
+                               candidate.PlayerIds.Contains(players[1].Id);
+            containsBoth.Should().BeFalse();
+        }
+    }
+
+    [Fact]
+    public async Task GenerateMatchesAsync_WithPreferredBlacklist_PenalisesButAllowsCombinations()
+    {
+        var clubId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var players = CreatePlayers(4);
+        var club = new Club
+        {
+            Id = clubId,
+            BlacklistMode = BlacklistMode.Preferred,
+            ScoringWeights = new ScoringWeights()
+        };
+
+        SetupSession(sessionId, clubId, players);
+        _clubRepositoryMock.Setup(r => r.GetByIdAsync(clubId)).ReturnsAsync(club);
+
+        var blacklists = new List<PlayerBlacklist>
+        {
+            new PlayerBlacklist
+            {
+                PlayerId = players[0].Id,
+                BlacklistedPlayerId = players[1].Id,
+                BlacklistType = BlacklistType.Partner
+            }
+        };
+
+        foreach (var player in players)
+        {
+            var playerBlacklists = blacklists.Where(b => b.PlayerId == player.Id).ToList();
+            _playerRepositoryMock
+                .Setup(r => r.GetBlacklistsByPlayerIdAsync(player.Id))
+                .ReturnsAsync(playerBlacklists);
+        }
+
+        var result = await _service.GenerateMatchesAsync(sessionId);
+
+        result.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task GenerateMatchesAsync_WithDefaultWeights_ReturnsResults()
+    {
+        var clubId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var players = CreatePlayers(4);
+
+        SetupSession(sessionId, clubId, players);
+        _clubRepositoryMock.Setup(r => r.GetByIdAsync(clubId)).ReturnsAsync((Club?)null);
+        SetupEmptyBlacklists(players);
+
+        var result = await _service.GenerateMatchesAsync(sessionId);
+
+        result.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task GenerateSingleMatchAsync_UsesClubWeightsAndBlacklist()
+    {
+        var clubId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var players = CreatePlayers(4);
+        var club = new Club
+        {
+            Id = clubId,
+            ScoringWeights = new ScoringWeights
+            {
+                SkillBalance = 20,
+                MatchHistory = 40,
+                TimeOffCourt = 40
+            },
+            BlacklistMode = BlacklistMode.Preferred
+        };
+
+        SetupSession(sessionId, clubId, players);
+        _clubRepositoryMock.Setup(r => r.GetByIdAsync(clubId)).ReturnsAsync(club);
+        SetupEmptyBlacklists(players);
+
+        var result = await _service.GenerateSingleMatchAsync(sessionId, 1);
+
+        result.Should().NotBeNull();
+        result!.CourtNumber.Should().Be(1);
+    }
+
+    private void SetupSession(Guid sessionId, Guid clubId, List<Player> players, int courtCount = 1)
+    {
+        var sessionPlayers = players.Select(p => new SessionPlayer
+        {
+            SessionId = sessionId,
+            PlayerId = p.Id,
+            Player = p,
+            IsActive = true
+        }).ToList();
+
+        var session = new Session
+        {
+            Id = sessionId,
+            ClubId = clubId,
+            CourtCount = courtCount,
+            State = SessionState.Active,
+            SessionPlayers = sessionPlayers
+        };
+
+        _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId)).ReturnsAsync(session);
+        _matchRepositoryMock.Setup(r => r.GetBySessionIdAsync(sessionId)).ReturnsAsync(new List<Domain.Entities.Match>());
+    }
+
+    private void SetupEmptyBlacklists(List<Player> players)
+    {
+        foreach (var player in players)
+        {
+            _playerRepositoryMock
+                .Setup(r => r.GetBlacklistsByPlayerIdAsync(player.Id))
+                .ReturnsAsync(new List<PlayerBlacklist>());
+        }
+    }
+
+    private List<Player> CreatePlayers(int count)
+    {
+        return Enumerable.Range(1, count).Select(i => new Player
+        {
+            Id = Guid.NewGuid(),
+            Name = $"Player {i}",
+            SkillLevel = 5,
+            Gender = Gender.Male,
+            PlayStylePreference = PlayStylePreference.Open,
+            ClubId = Guid.NewGuid()
+        }).ToList();
+    }
+}

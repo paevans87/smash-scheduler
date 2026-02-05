@@ -1,6 +1,7 @@
 using SmashScheduler.Application.Interfaces.Repositories;
 using SmashScheduler.Domain.Entities;
 using SmashScheduler.Domain.Enums;
+using SmashScheduler.Domain.ValueObjects;
 
 namespace SmashScheduler.Application.Services.ClubManagement;
 
@@ -19,14 +20,16 @@ public class ClubService(
         return await clubRepository.GetAllAsync();
     }
 
-    public async Task<Club> CreateClubAsync(string name, int defaultCourtCount, GameType gameType)
+    public async Task<Club> CreateClubAsync(string name, int defaultCourtCount, GameType gameType, ScoringWeights scoringWeights, BlacklistMode blacklistMode)
     {
         var club = new Club
         {
             Id = Guid.NewGuid(),
             Name = name,
             DefaultCourtCount = defaultCourtCount,
-            GameType = gameType
+            GameType = gameType,
+            ScoringWeights = scoringWeights,
+            BlacklistMode = blacklistMode
         };
 
         await clubRepository.InsertAsync(club);
