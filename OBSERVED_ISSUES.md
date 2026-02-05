@@ -10,4 +10,4 @@ Add Session:
 ~~datetime picker is rendering the same width as the input, meaning it doesn't show correctly. Same for time~~ FIXED - Changed to PickerVariant.Dialog for proper display
 
 Active Session:
-~~BROKEN: When a match is put on a court, the component should be updated to show who is on the court, rather than keeping it as "still available". This now means there is no way to actively end a match.~~ FIXED - Added StateHasChanged() calls after LoadData() to ensure UI updates
+~~BROKEN: When a match is put on a court, the component should be updated to show who is on the court, rather than keeping it as "still available". This now means there is no way to actively end a match.~~ FIXED - Moved match creation logic into parent component with confirmation dialog, ensuring proper UI re-render after data changes. Auto-generated matches now show confirmation dialog allowing user to modify suggested players.
