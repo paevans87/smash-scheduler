@@ -155,9 +155,9 @@ html, body {
 
 .court-card-empty,
 .empty-court {
-    border: 2px dashed var(--smash-border);
+    border: 2px dashed var(--mud-palette-lines-default);
     border-radius: var(--radius-lg);
-    background: linear-gradient(135deg, rgba(248,249,250,0.5), rgba(236,240,241,0.5));
+    background: var(--mud-palette-background);
     min-height: 180px;
     display: flex;
     align-items: center;
@@ -183,14 +183,14 @@ html, body {
 }
 
 .bench-section {
-    background: linear-gradient(180deg, var(--smash-surface), rgba(248,249,250,0.5));
+    background: var(--mud-palette-surface);
     border-radius: var(--radius-lg);
-    border: 1px solid var(--smash-border);
+    border: 1px solid var(--mud-palette-lines-default);
     padding: var(--spacing-md);
 }
 
 .bench-header {
-    border-bottom: 1px solid var(--smash-border);
+    border-bottom: 1px solid var(--mud-palette-lines-default);
     padding: var(--spacing-md);
 }
 
@@ -432,7 +432,7 @@ html, body {
     content: '';
     flex: 1;
     height: 1px;
-    background: var(--smash-border);
+    background: var(--mud-palette-lines-default);
     margin: 0 var(--spacing-sm);
 }
 
@@ -538,7 +538,7 @@ code {
 }
 
 .match-editor-section {
-    background: var(--smash-background);
+    background: var(--mud-palette-background);
     border-radius: var(--radius-md);
     padding: var(--spacing-md);
 }
