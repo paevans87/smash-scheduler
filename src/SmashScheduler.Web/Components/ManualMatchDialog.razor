@@ -5,8 +5,8 @@
 <MudDialog>
     <TitleContent>
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <MudIcon Icon="@Icons.Material.Filled.Add" Color="Color.Primary" />
-            <MudText Typo="Typo.h6">Create Match - Court @CourtNumber</MudText>
+            <MudIcon Icon="@(SuggestedPlayerIds.Any() ? Icons.Material.Filled.AutoAwesome : Icons.Material.Filled.Add)" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">@(SuggestedPlayerIds.Any() ? "Confirm Match" : "Create Match") - Court @CourtNumber</MudText>
         </MudStack>
     </TitleContent>
     <DialogContent>
@@ -99,8 +99,17 @@
     [Parameter] public int CourtNumber { get; set; }
     [Parameter] public Dictionary<Guid, Player> PlayerLookup { get; set; } = new();
     [Parameter] public List<Guid> BenchPlayerIds { get; set; } = new();
+    [Parameter] public List<Guid> SuggestedPlayerIds { get; set; } = new();
 
     private List<Guid> _selectedPlayerIds = new();
+
+    protected override void OnInitialized()
+    {
+        if (SuggestedPlayerIds.Any())
+        {
+            _selectedPlayerIds = SuggestedPlayerIds.Where(id => BenchPlayerIds.Contains(id)).ToList();
+        }
+    }
 
     private Color GetPlayerCountColour() => _selectedPlayerIds.Count switch
     {

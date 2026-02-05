@@ -120,8 +120,6 @@
         if (OnAutoGenerateSingleMatch.HasDelegate)
         {
             await OnAutoGenerateSingleMatch.InvokeAsync(courtNumber);
-            var courtLabel = Session.GetCourtLabel(courtNumber);
-            Snackbar.Add($"Match generated for {courtLabel}", Severity.Success);
         }
         else
         {
