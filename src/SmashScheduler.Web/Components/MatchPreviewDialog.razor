@@ -1,7 +1,9 @@
 @using MudBlazor
+@using SmashScheduler.Application.Services.Matchmaking
 @using SmashScheduler.Application.Services.Matchmaking.Models
 @using SmashScheduler.Domain.Entities
 @using SmashScheduler.Web.Components
+@inject IMatchmakingService MatchmakingService
 
 <MudDialog>
     <TitleContent>
@@ -13,10 +15,29 @@
     <DialogContent>
         <MudStack Spacing="4">
             <MudText Typo="Typo.body2" Color="Color.Secondary">
-                Review the proposed matches before creating them.
+                Review the proposed matches. Remove players and re-generate if needed.
             </MudText>
 
-            @foreach (var candidate in ProposedMatches)
+            @if (_excludedPlayerIds.Any())
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Style="flex-wrap: wrap;">
+                        <MudText Typo="Typo.body2">Excluded:</MudText>
+                        @foreach (var playerId in _excludedPlayerIds)
+                        {
+                            @if (PlayerLookup.TryGetValue(playerId, out var player))
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled"
+                                         OnClose="() => RestorePlayer(playerId)">
+                                    @player.Name
+                                </MudChip>
+                            }
+                        }
+                    </MudStack>
+                </MudAlert>
+            }
+
+            @foreach (var candidate in _currentMatches)
             {
                 <MudPaper Class="pa-3" Elevation="2">
                     <MudStack Spacing="2">
@@ -39,9 +60,13 @@
                                 {
                                     @if (PlayerLookup.TryGetValue(playerId, out var player))
                                     {
-                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-1">
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mt-1">
                                             <MudText Typo="Typo.body2">@player.Name</MudText>
                                             <SkillLevelBadge SkillLevel="@player.SkillLevel" Size="Size.Small" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.PersonRemove"
+                                                           Size="Size.Small"
+                                                           Color="Color.Error"
+                                                           OnClick="() => ExcludePlayer(playerId)" />
                                         </MudStack>
                                     }
                                 }
@@ -55,9 +80,13 @@
                                 {
                                     @if (PlayerLookup.TryGetValue(playerId, out var player))
                                     {
-                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-1">
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mt-1">
                                             <MudText Typo="Typo.body2">@player.Name</MudText>
                                             <SkillLevelBadge SkillLevel="@player.SkillLevel" Size="Size.Small" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.PersonRemove"
+                                                           Size="Size.Small"
+                                                           Color="Color.Error"
+                                                           OnClick="() => ExcludePlayer(playerId)" />
                                         </MudStack>
                                     }
                                 }
@@ -67,7 +96,7 @@
                 </MudPaper>
             }
 
-            @if (!ProposedMatches.Any())
+            @if (!_currentMatches.Any())
             {
                 <MudAlert Severity="Severity.Info">
                     No matches could be generated. Check that there are enough players on the bench.
@@ -77,11 +106,24 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
+        @if (_excludedPlayerIds.Any())
+        {
+            <MudButton OnClick="Regenerate"
+                       Color="Color.Secondary"
+                       Variant="Variant.Outlined"
+                       Disabled="@_isRegenerating">
+                @if (_isRegenerating)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                Re-generate
+            </MudButton>
+        }
         <MudButton OnClick="Submit"
                    Color="Color.Primary"
                    Variant="Variant.Filled"
-                   Disabled="@(!ProposedMatches.Any())">
-            Create @ProposedMatches.Count Match@(ProposedMatches.Count != 1 ? "es" : "")
+                   Disabled="@(!_currentMatches.Any())">
+            Create @_currentMatches.Count Match@(_currentMatches.Count != 1 ? "es" : "")
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -90,6 +132,41 @@
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
     [Parameter] public List<MatchCandidate> ProposedMatches { get; set; } = new();
     [Parameter] public Dictionary<Guid, Player> PlayerLookup { get; set; } = new();
+    [Parameter] public Guid SessionId { get; set; }
+
+    private List<MatchCandidate> _currentMatches = new();
+    private List<Guid> _excludedPlayerIds = new();
+    private bool _isRegenerating;
+
+    protected override void OnInitialized()
+    {
+        _currentMatches = new List<MatchCandidate>(ProposedMatches);
+    }
+
+    private void ExcludePlayer(Guid playerId)
+    {
+        if (!_excludedPlayerIds.Contains(playerId))
+        {
+            _excludedPlayerIds.Add(playerId);
+        }
+    }
+
+    private void RestorePlayer(Guid playerId)
+    {
+        _excludedPlayerIds.Remove(playerId);
+    }
+
+    private async Task Regenerate()
+    {
+        _isRegenerating = true;
+        StateHasChanged();
+
+        var candidates = await MatchmakingService.GenerateMatchesAsync(SessionId, _excludedPlayerIds);
+        _currentMatches = candidates;
+
+        _isRegenerating = false;
+        StateHasChanged();
+    }
 
     private Color GetScoreColour(double score) => score switch
     {
@@ -100,5 +177,5 @@
 
     private void Cancel() => MudDialog.Cancel();
 
-    private void Submit() => MudDialog.Close(DialogResult.Ok(ProposedMatches));
+    private void Submit() => MudDialog.Close(DialogResult.Ok(_currentMatches));
 }

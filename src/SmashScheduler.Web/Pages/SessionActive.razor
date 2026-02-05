@@ -127,7 +127,8 @@ else
         var parameters = new DialogParameters<MatchPreviewDialog>
         {
             { x => x.ProposedMatches, candidates },
-            { x => x.PlayerLookup, _playerLookup }
+            { x => x.PlayerLookup, _playerLookup },
+            { x => x.SessionId, SessionId }
         };
 
         var options = new DialogOptions

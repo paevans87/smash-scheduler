@@ -13,7 +13,7 @@ public class MatchmakingService(
     IPlayerRepository playerRepository,
     IClubRepository clubRepository) : IMatchmakingService
 {
-    public async Task<List<MatchCandidate>> GenerateMatchesAsync(Guid sessionId)
+    public async Task<List<MatchCandidate>> GenerateMatchesAsync(Guid sessionId, List<Guid>? excludePlayerIds = null)
     {
         var session = await sessionRepository.GetByIdAsync(sessionId);
         if (session == null) throw new InvalidOperationException("Session not found");
@@ -29,8 +29,10 @@ public class MatchmakingService(
             .SelectMany(m => m.PlayerIds)
             .ToHashSet();
 
+        var excludeSet = excludePlayerIds?.ToHashSet() ?? new HashSet<Guid>();
+
         var benchedSessionPlayers = session.SessionPlayers
-            .Where(sp => sp.IsActive && !playingPlayerIds.Contains(sp.PlayerId))
+            .Where(sp => sp.IsActive && !playingPlayerIds.Contains(sp.PlayerId) && !excludeSet.Contains(sp.PlayerId))
             .ToList();
 
         var benchedPlayers = new List<Player>();

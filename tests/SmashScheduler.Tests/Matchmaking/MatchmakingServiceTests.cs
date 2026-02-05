@@ -186,6 +186,55 @@ public class MatchmakingServiceTests
         result!.CourtNumber.Should().Be(1);
     }
 
+    [Fact]
+    public async Task GenerateMatchesAsync_WithExcludedPlayers_DoesNotIncludeThem()
+    {
+        var clubId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var players = CreatePlayers(8);
+        var club = new Club
+        {
+            Id = clubId,
+            ScoringWeights = new ScoringWeights()
+        };
+
+        SetupSession(sessionId, clubId, players, courtCount: 2);
+        _clubRepositoryMock.Setup(r => r.GetByIdAsync(clubId)).ReturnsAsync(club);
+        SetupEmptyBlacklists(players);
+
+        var excludeIds = new List<Guid> { players[0].Id, players[1].Id };
+        var result = await _service.GenerateMatchesAsync(sessionId, excludeIds);
+
+        result.Should().NotBeEmpty();
+        foreach (var candidate in result)
+        {
+            candidate.PlayerIds.Should().NotContain(players[0].Id);
+            candidate.PlayerIds.Should().NotContain(players[1].Id);
+        }
+    }
+
+    [Fact]
+    public async Task GenerateMatchesAsync_WithTooManyExcluded_ReturnsEmpty()
+    {
+        var clubId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var players = CreatePlayers(6);
+        var club = new Club
+        {
+            Id = clubId,
+            ScoringWeights = new ScoringWeights()
+        };
+
+        SetupSession(sessionId, clubId, players);
+        _clubRepositoryMock.Setup(r => r.GetByIdAsync(clubId)).ReturnsAsync(club);
+        SetupEmptyBlacklists(players);
+
+        var excludeIds = players.Take(3).Select(p => p.Id).ToList();
+        var result = await _service.GenerateMatchesAsync(sessionId, excludeIds);
+
+        result.Should().BeEmpty();
+    }
+
     private void SetupSession(Guid sessionId, Guid clubId, List<Player> players, int courtCount = 1)
     {
         var sessionPlayers = players.Select(p => new SessionPlayer

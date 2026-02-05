@@ -4,6 +4,6 @@ namespace SmashScheduler.Application.Services.Matchmaking;
 
 public interface IMatchmakingService
 {
-    Task<List<MatchCandidate>> GenerateMatchesAsync(Guid sessionId);
+    Task<List<MatchCandidate>> GenerateMatchesAsync(Guid sessionId, List<Guid>? excludePlayerIds = null);
     Task<MatchCandidate?> GenerateSingleMatchAsync(Guid sessionId, int courtNumber);
 }
