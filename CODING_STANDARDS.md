@@ -103,3 +103,6 @@ The **Critic** must reject code that:
   var activePlayers = players.Where(p => p.IsActive).Select(p => p.Name).ToList();
   ```
 - **Rationale**: Line-breaking chained methods improves readability and makes debugging easier by isolating each transformation step.
+
+## 15. Frontend - Components
+- **Rule**: Code should be broken down into smaller atomic components to remove duplication, improve isolation and ease of maintenance.
