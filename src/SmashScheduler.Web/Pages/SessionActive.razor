@@ -53,7 +53,9 @@ else
                       CanGenerateMatches="@CanGenerateMatches()"
                       OnGenerateMatches="GenerateMatches"
                       OnMatchComplete="CompleteMatch"
-                      OnMatchPlayersUpdate="UpdateMatchPlayers" />
+                      OnMatchPlayersUpdate="UpdateMatchPlayers"
+                      OnStartDraftMatch="StartDraftMatch"
+                      OnDeleteDraftMatch="DeleteDraftMatch" />
 }
 
 @code {
@@ -68,9 +70,9 @@ else
     {
         await LoadData();
         var club = await ClubService.GetByIdAsync(ClubId);
-        
-        var items = new List<BreadcrumbItem> { 
-            new("Home", "/"), 
+
+        var items = new List<BreadcrumbItem> {
+            new("Home", "/"),
             new("Clubs", "/clubs"),
             new(club?.Name ?? "club", $"/clubs/{ClubId}"),
             new("Sessions", $"/clubs/{ClubId}/sessions")
@@ -102,12 +104,12 @@ else
     private int GetBenchedPlayerCount()
     {
         if (_session == null) return 0;
-        var playingPlayerIds = _activeMatches
-            .Where(m => m.State == MatchState.InProgress)
+        var committedPlayerIds = _activeMatches
+            .Where(m => m.State != MatchState.Completed)
             .SelectMany(m => m.PlayerIds)
             .ToHashSet();
         return _session.SessionPlayers
-            .Count(sp => sp.IsActive && !playingPlayerIds.Contains(sp.PlayerId));
+            .Count(sp => sp.IsActive && !committedPlayerIds.Contains(sp.PlayerId));
     }
 
     private async Task GenerateMatches()
@@ -141,11 +143,21 @@ else
         var dialog = await DialogService.ShowAsync<MatchPreviewDialog>("Confirm Matches", parameters, options);
         var result = await dialog.Result;
 
-        if (result is { Canceled: false, Data: List<MatchCandidate> confirmedMatches })
+        if (result is { Canceled: false, Data: MatchPreviewResult previewResult })
         {
-            foreach (var candidate in confirmedMatches)
+            if (previewResult.SaveAsDraft)
             {
-                await MatchService.CreateMatchAsync(SessionId, candidate.CourtNumber, candidate.PlayerIds, true);
+                foreach (var candidate in previewResult.Matches)
+                {
+                    await MatchService.CreateDraftMatchAsync(SessionId, candidate.PlayerIds);
+                }
+            }
+            else
+            {
+                foreach (var candidate in previewResult.Matches)
+                {
+                    await MatchService.CreateMatchAsync(SessionId, candidate.CourtNumber, candidate.PlayerIds, true);
+                }
             }
 
             await LoadData();
@@ -157,13 +169,13 @@ else
     {
         if (_session == null) return new List<MatchCandidate>();
 
-        var playingPlayerIds = _activeMatches
-            .Where(m => m.State == MatchState.InProgress)
+        var committedPlayerIds = _activeMatches
+            .Where(m => m.State != MatchState.Completed)
             .SelectMany(m => m.PlayerIds)
             .ToHashSet();
 
         var benchedPlayerIds = _session.SessionPlayers
-            .Where(sp => sp.IsActive && !playingPlayerIds.Contains(sp.PlayerId))
+            .Where(sp => sp.IsActive && !committedPlayerIds.Contains(sp.PlayerId))
             .Select(sp => sp.PlayerId)
             .ToList();
 
@@ -227,6 +239,20 @@ else
     private async Task UpdateMatchPlayers((Guid MatchId, List<Guid> PlayerIds) update)
     {
         await MatchService.UpdateMatchPlayersAsync(update.MatchId, update.PlayerIds);
+        await LoadData();
+        StateHasChanged();
+    }
+
+    private async Task StartDraftMatch((Guid MatchId, int CourtNumber) args)
+    {
+        await MatchService.StartDraftMatchAsync(args.MatchId, args.CourtNumber);
+        await LoadData();
+        StateHasChanged();
+    }
+
+    private async Task DeleteDraftMatch(Guid matchId)
+    {
+        await MatchService.DeleteMatchAsync(matchId);
         await LoadData();
         StateHasChanged();
     }

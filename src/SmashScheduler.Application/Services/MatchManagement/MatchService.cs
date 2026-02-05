@@ -34,6 +34,35 @@ public class MatchService(IMatchRepository matchRepository) : IMatchService
         return match;
     }
 
+    public async Task<Match> CreateDraftMatchAsync(Guid sessionId, List<Guid> playerIds)
+    {
+        var match = new Match
+        {
+            Id = Guid.NewGuid(),
+            SessionId = sessionId,
+            CourtNumber = 0,
+            PlayerIds = playerIds,
+            State = MatchState.Draft,
+            WasAutomated = true
+        };
+
+        await matchRepository.InsertAsync(match);
+        return match;
+    }
+
+    public async Task StartDraftMatchAsync(Guid matchId, int courtNumber)
+    {
+        var match = await matchRepository.GetByIdAsync(matchId);
+        if (match == null) throw new InvalidOperationException("Match not found");
+        if (match.State != MatchState.Draft) throw new InvalidOperationException("Match is not a draft");
+
+        match.State = MatchState.InProgress;
+        match.CourtNumber = courtNumber;
+        match.StartedAt = DateTime.UtcNow;
+
+        await matchRepository.UpdateAsync(match);
+    }
+
     public async Task CompleteMatchAsync(Guid matchId, List<Guid>? winningPlayerIds, MatchScore? score)
     {
         var match = await matchRepository.GetByIdAsync(matchId);

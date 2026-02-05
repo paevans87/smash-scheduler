@@ -120,4 +120,63 @@ public class MatchServiceTests
 
         result.WasAutomated.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task CreateDraftMatchAsync_CreatesDraftMatch()
+    {
+        var sessionId = Guid.NewGuid();
+        var playerIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() };
+
+        var result = await _matchService.CreateDraftMatchAsync(sessionId, playerIds);
+
+        result.Should().NotBeNull();
+        result.SessionId.Should().Be(sessionId);
+        result.State.Should().Be(MatchState.Draft);
+        result.CourtNumber.Should().Be(0);
+        result.PlayerIds.Should().BeEquivalentTo(playerIds);
+        _matchRepositoryMock.Verify(r => r.InsertAsync(It.IsAny<DomainMatch>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task StartDraftMatchAsync_TransitionsToDraftToInProgress()
+    {
+        var matchId = Guid.NewGuid();
+        var draftMatch = new DomainMatch
+        {
+            Id = matchId,
+            SessionId = Guid.NewGuid(),
+            CourtNumber = 0,
+            State = MatchState.Draft,
+            PlayerIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() }
+        };
+
+        _matchRepositoryMock.Setup(r => r.GetByIdAsync(matchId)).ReturnsAsync(draftMatch);
+
+        await _matchService.StartDraftMatchAsync(matchId, 3);
+
+        draftMatch.State.Should().Be(MatchState.InProgress);
+        draftMatch.CourtNumber.Should().Be(3);
+        draftMatch.StartedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+        _matchRepositoryMock.Verify(r => r.UpdateAsync(draftMatch), Times.Once);
+    }
+
+    [Fact]
+    public async Task StartDraftMatchAsync_WithNonDraftMatch_ThrowsException()
+    {
+        var matchId = Guid.NewGuid();
+        var inProgressMatch = new DomainMatch
+        {
+            Id = matchId,
+            SessionId = Guid.NewGuid(),
+            CourtNumber = 1,
+            State = MatchState.InProgress,
+            PlayerIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() }
+        };
+
+        _matchRepositoryMock.Setup(r => r.GetByIdAsync(matchId)).ReturnsAsync(inProgressMatch);
+
+        var act = async () => await _matchService.StartDraftMatchAsync(matchId, 2);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Match is not a draft");
+    }
 }

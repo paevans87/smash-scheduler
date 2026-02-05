@@ -1,5 +1,6 @@
 @using MudBlazor
 @using SmashScheduler.Domain.Entities
+@using SmashScheduler.Domain.Enums
 @using SmashScheduler.Web.Components
 @inject IDialogService DialogService
 
@@ -11,6 +12,84 @@
                   IsReadOnly="false"
                   OnMatchComplete="@OnMatchComplete"
                   OnMatchEdit="@HandleEditMatch" />
+
+    @if (GetDraftMatches().Any())
+    {
+        <MudPaper Class="pa-4" Elevation="2" Style="border-radius: var(--radius-lg);">
+            <MudStack Spacing="3">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.Drafts" Color="Color.Info" />
+                    <MudText Typo="Typo.h6" Style="font-weight: 600;">Draft Matches</MudText>
+                    <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Filled">
+                        @GetDraftMatches().Count queued
+                    </MudChip>
+                </MudStack>
+                @foreach (var draft in GetDraftMatches())
+                {
+                    <MudPaper Class="pa-3" Elevation="1">
+                        <MudStack Spacing="2">
+                            <MudGrid Spacing="2">
+                                <MudItem xs="5">
+                                    <MudText Typo="Typo.caption" Color="Color.Primary" Style="font-weight: 600;">TEAM 1</MudText>
+                                    @foreach (var playerId in draft.PlayerIds.Take(2))
+                                    {
+                                        @if (PlayerLookup.TryGetValue(playerId, out var player))
+                                        {
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-1">
+                                                <MudText Typo="Typo.body2">@player.Name</MudText>
+                                                <SkillLevelBadge SkillLevel="@player.SkillLevel" Size="Size.Small" />
+                                            </MudStack>
+                                        }
+                                    }
+                                </MudItem>
+                                <MudItem xs="2" Style="display: flex; align-items: center; justify-content: center;">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">vs</MudText>
+                                </MudItem>
+                                <MudItem xs="5">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight: 600;">TEAM 2</MudText>
+                                    @foreach (var playerId in draft.PlayerIds.Skip(2).Take(2))
+                                    {
+                                        @if (PlayerLookup.TryGetValue(playerId, out var player))
+                                        {
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-1">
+                                                <MudText Typo="Typo.body2">@player.Name</MudText>
+                                                <SkillLevelBadge SkillLevel="@player.SkillLevel" Size="Size.Small" />
+                                            </MudStack>
+                                        }
+                                    }
+                                </MudItem>
+                            </MudGrid>
+                            <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd">
+                                <MudButton Variant="Variant.Text"
+                                           Color="Color.Error"
+                                           Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.Delete"
+                                           OnClick="() => OnDeleteDraftMatch.InvokeAsync(draft.Id)">
+                                    Remove
+                                </MudButton>
+                                @if (GetAvailableCourts().Any())
+                                {
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Primary"
+                                               Size="Size.Small"
+                                               StartIcon="@Icons.Material.Filled.PlayArrow"
+                                               OnClick="() => HandleStartDraft(draft.Id)">
+                                        Start on Court
+                                    </MudButton>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">
+                                        No courts available
+                                    </MudChip>
+                                }
+                            </MudStack>
+                        </MudStack>
+                    </MudPaper>
+                }
+            </MudStack>
+        </MudPaper>
+    }
 
     <BenchDisplay BenchedPlayers="@GetBenchedPlayers()" GamesPlayedLookup="@GamesPlayedLookup" />
 </MudStack>
@@ -32,6 +111,8 @@
     [Parameter] public EventCallback OnGenerateMatches { get; set; }
     [Parameter] public EventCallback<Guid> OnMatchComplete { get; set; }
     [Parameter] public EventCallback<(Guid MatchId, List<Guid> PlayerIds)> OnMatchPlayersUpdate { get; set; }
+    [Parameter] public EventCallback<(Guid MatchId, int CourtNumber)> OnStartDraftMatch { get; set; }
+    [Parameter] public EventCallback<Guid> OnDeleteDraftMatch { get; set; }
     [Parameter] public bool CanGenerateMatches { get; set; }
     [Parameter] public Dictionary<Guid, int> GamesPlayedLookup { get; set; } = new();
 
@@ -42,17 +123,34 @@
         return IsGenerating ? "smash-fab smash-fab--loading" : "smash-fab";
     }
 
+    private List<Match> GetDraftMatches()
+    {
+        return ActiveMatches.Where(m => m.State == MatchState.Draft).ToList();
+    }
+
+    private List<int> GetAvailableCourts()
+    {
+        var usedCourts = ActiveMatches
+            .Where(m => m.State == MatchState.InProgress)
+            .Select(m => m.CourtNumber)
+            .ToHashSet();
+
+        return Enumerable.Range(1, Session.CourtCount)
+            .Where(c => !usedCourts.Contains(c))
+            .ToList();
+    }
+
     private IEnumerable<Player> GetBenchedPlayers()
     {
-        var playingPlayerIds = ActiveMatches
-            .Where(m => m.State == Domain.Enums.MatchState.InProgress)
+        var committedPlayerIds = ActiveMatches
+            .Where(m => m.State != MatchState.Completed)
             .SelectMany(m => m.PlayerIds)
             .ToHashSet();
 
         return Session.SessionPlayers
             .Where(sp => sp.IsActive)
             .Select(sp => sp.PlayerId)
-            .Where(id => !playingPlayerIds.Contains(id) && PlayerLookup.ContainsKey(id))
+            .Where(id => !committedPlayerIds.Contains(id) && PlayerLookup.ContainsKey(id))
             .Select(id => PlayerLookup[id]);
     }
 
@@ -67,13 +165,45 @@
         StateHasChanged();
     }
 
+    private async Task HandleStartDraft(Guid matchId)
+    {
+        var availableCourts = GetAvailableCourts();
+        if (!availableCourts.Any()) return;
+
+        if (availableCourts.Count == 1)
+        {
+            await OnStartDraftMatch.InvokeAsync((matchId, availableCourts.First()));
+            return;
+        }
+
+        var parameters = new DialogParameters<CourtSelectionDialog>
+        {
+            { x => x.AvailableCourts, availableCourts },
+            { x => x.CourtLabels, Session.CourtLabels }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.ExtraSmall,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog = await DialogService.ShowAsync<CourtSelectionDialog>("Select Court", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: int selectedCourt })
+        {
+            await OnStartDraftMatch.InvokeAsync((matchId, selectedCourt));
+        }
+    }
+
     private async Task HandleEditMatch(Guid matchId)
     {
         var match = ActiveMatches.FirstOrDefault(m => m.Id == matchId);
         if (match == null) return;
 
         var playersInOtherMatches = ActiveMatches
-            .Where(m => m.Id != matchId && m.State == Domain.Enums.MatchState.InProgress)
+            .Where(m => m.Id != matchId && m.State == MatchState.InProgress)
             .SelectMany(m => m.PlayerIds)
             .ToHashSet();
 

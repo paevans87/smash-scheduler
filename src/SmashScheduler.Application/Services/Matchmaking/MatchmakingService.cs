@@ -24,15 +24,15 @@ public class MatchmakingService(
 
         var existingMatches = await matchRepository.GetBySessionIdAsync(sessionId);
 
-        var playingPlayerIds = existingMatches
-            .Where(m => m.State == MatchState.InProgress)
+        var committedPlayerIds = existingMatches
+            .Where(m => m.State != MatchState.Completed)
             .SelectMany(m => m.PlayerIds)
             .ToHashSet();
 
         var excludeSet = excludePlayerIds?.ToHashSet() ?? new HashSet<Guid>();
 
         var benchedSessionPlayers = session.SessionPlayers
-            .Where(sp => sp.IsActive && !playingPlayerIds.Contains(sp.PlayerId) && !excludeSet.Contains(sp.PlayerId))
+            .Where(sp => sp.IsActive && !committedPlayerIds.Contains(sp.PlayerId) && !excludeSet.Contains(sp.PlayerId))
             .ToList();
 
         var benchedPlayers = new List<Player>();
@@ -73,13 +73,13 @@ public class MatchmakingService(
 
         var existingMatches = await matchRepository.GetBySessionIdAsync(sessionId);
 
-        var playingPlayerIds = existingMatches
-            .Where(m => m.State == MatchState.InProgress)
+        var committedPlayerIds = existingMatches
+            .Where(m => m.State != MatchState.Completed)
             .SelectMany(m => m.PlayerIds)
             .ToHashSet();
 
         var benchedSessionPlayers = session.SessionPlayers
-            .Where(sp => sp.IsActive && !playingPlayerIds.Contains(sp.PlayerId))
+            .Where(sp => sp.IsActive && !committedPlayerIds.Contains(sp.PlayerId))
             .ToList();
 
         var benchedPlayers = new List<Player>();

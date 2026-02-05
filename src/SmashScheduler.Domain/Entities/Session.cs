@@ -57,18 +57,13 @@ public class Session
     {
         get
         {
-            var activePlayers = SessionPlayers
-                .Where(sp => sp.IsActive)
-                .Select(sp => sp.PlayerId)
-                .ToHashSet();
-
-            var playersInMatches = Matches
-                .Where(m => m.State == MatchState.InProgress)
+            var committedPlayerIds = Matches
+                .Where(m => m.State != MatchState.Completed)
                 .SelectMany(m => m.PlayerIds)
                 .ToHashSet();
 
             return SessionPlayers
-                .Where(sp => sp.IsActive && !playersInMatches.Contains(sp.PlayerId))
+                .Where(sp => sp.IsActive && !committedPlayerIds.Contains(sp.PlayerId))
                 .Select(sp => sp.Player!)
                 .Where(p => p != null);
         }

@@ -3,5 +3,6 @@ namespace SmashScheduler.Domain.Enums;
 public enum MatchState
 {
     InProgress = 0,
-    Completed = 1
+    Completed = 1,
+    Draft = 2
 }
