@@ -56,32 +56,26 @@ else
             <MudItem xs="12" sm="6" md="4">
                 <MudCard Class="smash-card smash-card-clickable" Elevation="2" @onclick="() => NavigateToClub(club.Id)">
                     <MudCardContent>
-                        <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Start">
-                            <div class="club-card-icon">
-                                <MudIcon Icon="@Icons.Material.Filled.SportsTennis" />
-                            </div>
-                            <MudStack Spacing="1">
-                                <MudText Typo="Typo.h6" Style="font-weight: 600;">@club.Name</MudText>
-                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary">
-                                        @club.DefaultCourtCount courts
-                                    </MudChip>
-                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary">
-                                        @club.GameType
-                                    </MudChip>
+                        <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                            <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Start">
+                                <div class="club-card-icon">
+                                    <MudIcon Icon="@Icons.Material.Filled.SportsTennis" />
+                                </div>
+                                <MudStack Spacing="1">
+                                    <MudText Typo="Typo.h6" Style="font-weight: 600;">@club.Name</MudText>
+                                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary">
+                                            @club.DefaultCourtCount courts
+                                        </MudChip>
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary">
+                                            @club.GameType
+                                        </MudChip>
+                                    </MudStack>
                                 </MudStack>
                             </MudStack>
+                            <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Primary" />
                         </MudStack>
                     </MudCardContent>
-                    <MudCardActions Class="pa-4 pt-0">
-                        <MudButton Variant="Variant.Text"
-                                   Color="Color.Primary"
-                                   EndIcon="@Icons.Material.Filled.ChevronRight"
-                                   FullWidth="true"
-                                   OnClick="() => NavigateToClub(club.Id)">
-                            View Club
-                        </MudButton>
-                    </MudCardActions>
                 </MudCard>
             </MudItem>
         }
