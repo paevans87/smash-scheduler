@@ -41,5 +41,6 @@ builder.Services.AddScoped<ISessionStateManager, SessionStateManager>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 
 builder.Services.AddSingleton<IBreadcrumbService, BreadcrumbService>();
+builder.Services.AddSingleton<IThemeService, ThemeService>();
 
 await builder.Build().RunAsync();

@@ -1,9 +1,12 @@
 @inject IBreadcrumbService BreadcrumbService
+@inject IThemeService ThemeService
+@inject IJSRuntime JSRuntime
 @using SmashScheduler.Web.Services
 @using SmashScheduler.Web.Themes
+@implements IAsyncDisposable
 @inherits LayoutComponentBase
 
-<MudThemeProvider Theme="SmashSchedulerTheme.Theme" />
+<MudThemeProvider @ref="_mudThemeProvider" Theme="SmashSchedulerTheme.Theme" IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -16,6 +19,29 @@
                        Href="/" />
         <MudText Typo="Typo.h6" Class="ml-2">SmashScheduler</MudText>
         <MudSpacer />
+        <MudMenu Icon="@GetThemeIcon()" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+            <MudMenuItem Icon="@Icons.Material.Filled.SettingsBrightness" OnClick="@(() => SetTheme(ThemeMode.System))">
+                @if (ThemeService.CurrentMode == ThemeMode.System)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Class="mr-2" />
+                }
+                Use System
+            </MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.LightMode" OnClick="@(() => SetTheme(ThemeMode.Light))">
+                @if (ThemeService.CurrentMode == ThemeMode.Light)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Class="mr-2" />
+                }
+                Light
+            </MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.DarkMode" OnClick="@(() => SetTheme(ThemeMode.Dark))">
+                @if (ThemeService.CurrentMode == ThemeMode.Dark)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Class="mr-2" />
+                }
+                Dark
+            </MudMenuItem>
+        </MudMenu>
     </MudAppBar>
     <MudMainContent Class="smash-main-content">
         <MudContainer MaxWidth="MaxWidth.Large">
@@ -33,13 +59,35 @@
 
 @code {
     private List<BreadcrumbItem> _items = new();
+    private MudThemeProvider _mudThemeProvider = null!;
+    private bool _isDarkMode;
 
     protected override void OnInitialized()
     {
         _items = BreadcrumbService.Items;
-        
-        // Subscribe to future changes
+        _isDarkMode = ThemeService.IsDarkMode;
+
         BreadcrumbService.OnChange += HandleBreadcrumbsChanged;
+        ThemeService.OnChange += HandleThemeChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var systemPreference = await _mudThemeProvider.GetSystemDarkModeAsync();
+            ThemeService.SetSystemPreference(systemPreference);
+            _isDarkMode = ThemeService.IsDarkMode;
+            StateHasChanged();
+
+            await _mudThemeProvider.WatchSystemDarkModeAsync(OnSystemPreferenceChanged);
+        }
+    }
+
+    private Task OnSystemPreferenceChanged(bool prefersDark)
+    {
+        ThemeService.SetSystemPreference(prefersDark);
+        return Task.CompletedTask;
     }
 
     private void HandleBreadcrumbsChanged()
@@ -51,8 +99,31 @@
         });
     }
 
-    public void Dispose()
+    private void HandleThemeChanged()
+    {
+        InvokeAsync(() =>
+        {
+            _isDarkMode = ThemeService.IsDarkMode;
+            StateHasChanged();
+        });
+    }
+
+    private void SetTheme(ThemeMode mode)
+    {
+        ThemeService.SetThemeMode(mode);
+    }
+
+    private string GetThemeIcon() => ThemeService.CurrentMode switch
+    {
+        ThemeMode.Light => Icons.Material.Filled.LightMode,
+        ThemeMode.Dark => Icons.Material.Filled.DarkMode,
+        ThemeMode.System => Icons.Material.Filled.SettingsBrightness,
+        _ => Icons.Material.Filled.SettingsBrightness
+    };
+
+    public async ValueTask DisposeAsync()
     {
         BreadcrumbService.OnChange -= HandleBreadcrumbsChanged;
+        ThemeService.OnChange -= HandleThemeChanged;
     }
 }
