@@ -7,7 +7,7 @@
     <MudCardHeader Class="pb-0">
         <CardHeaderContent>
             <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="match-card-header-badges">
                     <MudIcon Icon="@Icons.Material.Filled.SportsScore" Color="Color.Primary" />
                     <MudText Typo="Typo.h6">@GetDisplayCourtLabel()</MudText>
                     @if (!Match.WasAutomated)
@@ -72,21 +72,22 @@
     @if (!IsReadOnly && Match.State == MatchState.InProgress)
     {
         <MudCardActions Class="pa-4 pt-0">
-            <MudStack Row="true" Spacing="2" Style="width: 100%;">
-                <MudButton Variant="Variant.Outlined"
-                           Color="Color.Primary"
-                           Size="Size.Large"
-                           StartIcon="@Icons.Material.Filled.Edit"
-                           OnClick="@(() => OnEdit.InvokeAsync(Match.Id))">
-                    Edit Players
-                </MudButton>
+            <MudStack Row="true" Spacing="2" Style="width: 100%;" Class="match-card-actions">
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
                            Size="Size.Large"
+                           FullWidth="true"
                            StartIcon="@Icons.Material.Filled.CheckCircle"
-                           Style="flex: 1;"
                            OnClick="@(() => OnComplete.InvokeAsync(Match.Id))">
                     Complete Match
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           Size="Size.Large"
+                           FullWidth="true"
+                           StartIcon="@Icons.Material.Filled.Edit"
+                           OnClick="@(() => OnEdit.InvokeAsync(Match.Id))">
+                    Edit Players
                 </MudButton>
             </MudStack>
         </MudCardActions>

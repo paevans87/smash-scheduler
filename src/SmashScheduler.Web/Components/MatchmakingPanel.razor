@@ -29,7 +29,7 @@
                     <MudPaper Class="pa-3" Elevation="1">
                         <MudStack Spacing="2">
                             <MudGrid Spacing="2">
-                                <MudItem xs="5">
+                                <MudItem xs="12" sm="5">
                                     <MudText Typo="Typo.caption" Color="Color.Primary" Style="font-weight: 600;">TEAM 1</MudText>
                                     @foreach (var playerId in draft.PlayerIds.Take(2))
                                     {
@@ -42,10 +42,10 @@
                                         }
                                     }
                                 </MudItem>
-                                <MudItem xs="2" Style="display: flex; align-items: center; justify-content: center;">
+                                <MudItem xs="12" sm="2" Style="display: flex; align-items: center; justify-content: center;">
                                     <MudText Typo="Typo.caption" Color="Color.Secondary">vs</MudText>
                                 </MudItem>
-                                <MudItem xs="5">
+                                <MudItem xs="12" sm="5">
                                     <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight: 600;">TEAM 2</MudText>
                                     @foreach (var playerId in draft.PlayerIds.Skip(2).Take(2))
                                     {

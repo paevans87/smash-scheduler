@@ -598,3 +598,53 @@ code {
     right: var(--spacing-lg);
     z-index: 1000;
 }
+
+@media (max-width: 600px) {
+    .session-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .session-header-controls {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .match-card-actions {
+        flex-direction: column !important;
+        width: 100%;
+    }
+
+    .match-card-actions .mud-button-root {
+        width: 100%;
+    }
+
+    .match-card-header-badges {
+        flex-wrap: wrap;
+    }
+
+    .bench-player-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .dialog-actions-mobile {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .hide-on-mobile {
+        display: none;
+    }
+
+    .smash-fab-fixed {
+        bottom: var(--spacing-md);
+        right: var(--spacing-md);
+    }
+
+    .stats-table-mobile td,
+    .stats-table-mobile th {
+        padding: 4px 8px;
+    }
+}

@@ -25,22 +25,24 @@
 }
 else
 {
-    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <div class="session-header d-flex align-center justify-space-between mb-4">
         <MudStack>
-            <MudText Typo="Typo.h4">Active Session</MudText>
+            <MudText Typo="Typo.h4" Class="d-none d-sm-block">Active Session</MudText>
+            <MudText Typo="Typo.h5" Class="d-block d-sm-none">Active Session</MudText>
             <MudText Typo="Typo.body2" Color="Color.Secondary">
                 @_session.ScheduledDateTime.ToString("dd MMM yyyy HH:mm") • @_session.CourtCount courts
             </MudText>
         </MudStack>
-        <MudStack Row="true" Spacing="2">
+        <div class="session-header-controls d-flex align-center gap-2">
             <SessionStateBadge State="@_session.State" Size="Size.Medium" />
             <MudButton Variant="Variant.Outlined"
                        Color="Color.Error"
+                       Size="Size.Small"
                        OnClick="EndSession">
                 End Session
             </MudButton>
-        </MudStack>
-    </MudStack>
+        </div>
+    </div>
 
     <RealTimeStatsPanel Session="@_session"
                         Matches="@_activeMatches"
