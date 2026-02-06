@@ -107,19 +107,72 @@ public class RealTimeStatsPanelTests
     }
 
     [Fact]
-    public void TotalPlayTime_CalculatesCorrectly()
+    public void AverageMatchDuration_CalculatesCorrectly()
     {
         var now = DateTime.UtcNow;
         var matches = new List<Match>
         {
-            CreateMatch(1, MatchState.Completed, _playerIds.Take(4).ToList(), now.AddMinutes(-30), now.AddMinutes(-15))
+            CreateMatch(1, MatchState.Completed, _playerIds.Take(4).ToList(), now.AddMinutes(-30), now.AddMinutes(-15)),
+            CreateMatch(2, MatchState.Completed, _playerIds.Skip(4).Take(4).ToList(), now.AddMinutes(-20), now.AddMinutes(-10))
         };
 
-        var totalPlayTime = matches
-            .Where(m => m.CompletedAt.HasValue)
-            .Sum(m => (m.CompletedAt!.Value - m.StartedAt).TotalMinutes);
+        var completedMatches = matches
+            .Where(m => m.State == MatchState.Completed && m.CompletedAt.HasValue)
+            .ToList();
+        var totalTicks = completedMatches
+            .Sum(m => (m.CompletedAt!.Value - m.StartedAt).Ticks);
+        var averageDuration = TimeSpan.FromTicks(totalTicks / completedMatches.Count);
 
-        totalPlayTime.Should().Be(15);
+        averageDuration.TotalMinutes.Should().BeApproximately(12.5, 0.01);
+    }
+
+    [Fact]
+    public void AverageMatchDuration_ReturnsZero_WhenNoCompletedMatches()
+    {
+        var matches = new List<Match>
+        {
+            CreateMatch(1, MatchState.InProgress, _playerIds.Take(4).ToList(), DateTime.UtcNow.AddMinutes(-10))
+        };
+
+        var completedMatches = matches
+            .Where(m => m.State == MatchState.Completed && m.CompletedAt.HasValue)
+            .ToList();
+
+        completedMatches.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AverageGamesPerPlayer_CalculatesCorrectly()
+    {
+        var matches = new List<Match>
+        {
+            CreateMatch(1, MatchState.Completed, _playerIds.Take(4).ToList(), DateTime.UtcNow.AddMinutes(-60), DateTime.UtcNow.AddMinutes(-45)),
+            CreateMatch(2, MatchState.Completed, _playerIds.Skip(4).Take(4).ToList(), DateTime.UtcNow.AddMinutes(-30), DateTime.UtcNow.AddMinutes(-15))
+        };
+
+        var activePlayers = _session.SessionPlayers.Where(sp => sp.IsActive).ToList();
+        var totalGames = activePlayers.Sum(sp => matches.Count(m => m.PlayerIds.Contains(sp.PlayerId)));
+        var average = (double)totalGames / activePlayers.Count;
+
+        average.Should().Be(1.0);
+    }
+
+    [Fact]
+    public void AverageGamesPerPlayer_ReturnsZero_WhenNoActivePlayers()
+    {
+        var session = new Session
+        {
+            Id = Guid.NewGuid(),
+            ClubId = Guid.NewGuid(),
+            CourtCount = 2,
+            State = SessionState.Active,
+            SessionPlayers = new List<SessionPlayer>()
+        };
+
+        var activePlayers = session.SessionPlayers.Where(sp => sp.IsActive).ToList();
+        var average = activePlayers.Any() ? (double)0 / activePlayers.Count : 0;
+
+        average.Should().Be(0);
     }
 
     [Fact]
@@ -257,5 +310,59 @@ public class RealTimeStatsPanelTests
 
         playerCount.Should().Be(8);
         _session.SessionPlayers.Should().AllSatisfy(sp => _playerLookup.Should().ContainKey(sp.PlayerId));
+    }
+
+    [Fact]
+    public void PlayerStats_SortByNameAscending()
+    {
+        var stats = _session.SessionPlayers
+            .Where(sp => sp.IsActive && _playerLookup.ContainsKey(sp.PlayerId))
+            .Select(sp => _playerLookup[sp.PlayerId])
+            .OrderBy(p => p.Name)
+            .ToList();
+
+        stats.First().Name.Should().Be("Alice");
+        stats.Last().Name.Should().Be("Henry");
+    }
+
+    [Fact]
+    public void PlayerStats_SortByNameDescending()
+    {
+        var stats = _session.SessionPlayers
+            .Where(sp => sp.IsActive && _playerLookup.ContainsKey(sp.PlayerId))
+            .Select(sp => _playerLookup[sp.PlayerId])
+            .OrderByDescending(p => p.Name)
+            .ToList();
+
+        stats.First().Name.Should().Be("Henry");
+        stats.Last().Name.Should().Be("Alice");
+    }
+
+    [Fact]
+    public void PlayerStats_SortByGamesDescending_IsDefault()
+    {
+        var matches = new List<Match>
+        {
+            CreateMatch(1, MatchState.Completed, new List<Guid> { _playerIds[0], _playerIds[1], _playerIds[2], _playerIds[3] }, DateTime.UtcNow.AddMinutes(-60), DateTime.UtcNow.AddMinutes(-45)),
+            CreateMatch(1, MatchState.Completed, new List<Guid> { _playerIds[0], _playerIds[1], _playerIds[4], _playerIds[5] }, DateTime.UtcNow.AddMinutes(-30), DateTime.UtcNow.AddMinutes(-15))
+        };
+
+        var gamesPerPlayer = new Dictionary<Guid, int>();
+        foreach (var match in matches)
+        {
+            foreach (var playerId in match.PlayerIds)
+            {
+                gamesPerPlayer.TryGetValue(playerId, out var count);
+                gamesPerPlayer[playerId] = count + 1;
+            }
+        }
+
+        var sorted = _playerIds
+            .Select(id => new { Id = id, Games = gamesPerPlayer.GetValueOrDefault(id, 0) })
+            .OrderByDescending(p => p.Games)
+            .ToList();
+
+        sorted[0].Games.Should().Be(2);
+        new[] { _playerIds[0], _playerIds[1] }.Should().Contain(sorted[0].Id);
     }
 }

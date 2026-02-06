@@ -1,0 +1,95 @@
+@using SmashScheduler.Web.Services
+@inject IThemeService ThemeService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Settings" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Settings</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="4">
+            <div>
+                <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Theme</MudText>
+                <MudRadioGroup T="ThemeMode" Value="ThemeService.CurrentMode" ValueChanged="SetTheme">
+                    <MudRadio Value="ThemeMode.System" Color="Color.Primary">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.SettingsBrightness" Size="Size.Small" />
+                            <MudText>Use System</MudText>
+                        </MudStack>
+                    </MudRadio>
+                    <MudRadio Value="ThemeMode.Light" Color="Color.Primary">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.LightMode" Size="Size.Small" />
+                            <MudText>Light</MudText>
+                        </MudStack>
+                    </MudRadio>
+                    <MudRadio Value="ThemeMode.Dark" Color="Color.Primary">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.DarkMode" Size="Size.Small" />
+                            <MudText>Dark</MudText>
+                        </MudStack>
+                    </MudRadio>
+                </MudRadioGroup>
+            </div>
+
+            <MudDivider />
+
+            <div>
+                <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Data</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                    Permanently delete all clubs, players, sessions and match data. This cannot be undone.
+                </MudText>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.DeleteForever"
+                           OnClick="WipeDatabase"
+                           Disabled="@_isWiping">
+                    @if (_isWiping)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    Wipe Database
+                </MudButton>
+            </div>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Variant="Variant.Text">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public IDialogService DialogService { get; set; } = null!;
+
+    private bool _isWiping;
+
+    private void SetTheme(ThemeMode mode)
+    {
+        ThemeService.SetThemeMode(mode);
+    }
+
+    private async Task WipeDatabase()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Wipe Database",
+            "Are you sure you want to delete all data? This will remove all clubs, players, sessions and matches permanently.",
+            yesText: "Wipe Everything",
+            cancelText: "Cancel");
+
+        if (confirmed != true) return;
+
+        _isWiping = true;
+        StateHasChanged();
+
+        await JSRuntime.InvokeVoidAsync("indexedDB.deleteDatabase", "SmashSchedulerDb");
+
+        Navigation.NavigateTo("/", forceLoad: true);
+    }
+
+    private void Close() => MudDialog.Cancel();
+}

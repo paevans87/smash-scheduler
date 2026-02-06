@@ -28,14 +28,14 @@
                 </MudItem>
                 <MudItem xs="6" sm="3">
                     <MudPaper Class="pa-3 text-center" Elevation="0" Style="background-color: var(--mud-palette-info-lighten);">
-                        <MudText Typo="Typo.h5" Color="Color.Info">@BenchCount</MudText>
-                        <MudText Typo="Typo.caption">On Bench</MudText>
+                        <MudText Typo="Typo.h5" Color="Color.Info">@AverageGamesPerPlayer.ToString("F1")</MudText>
+                        <MudText Typo="Typo.caption">Avg Games/Player</MudText>
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="6" sm="3">
                     <MudPaper Class="pa-3 text-center" Elevation="0" Style="background-color: var(--mud-palette-secondary-lighten);">
-                        <MudText Typo="Typo.h5" Color="Color.Secondary">@FormatDuration(TotalPlayTime)</MudText>
-                        <MudText Typo="Typo.caption">Total Play Time</MudText>
+                        <MudText Typo="Typo.h5" Color="Color.Secondary">@FormatDuration(AverageMatchDuration)</MudText>
+                        <MudText Typo="Typo.caption">Avg Match Duration</MudText>
                     </MudPaper>
                 </MudItem>
             </MudGrid>
@@ -44,34 +44,28 @@
             <MudSimpleTable Dense="true" Hover="true" Bordered="true" Style="max-height: 300px; overflow-y: auto;">
                 <thead>
                     <tr>
-                        <th>Player</th>
-                        <th style="text-align: center;">Games</th>
-                        <th style="text-align: center;">Play Time</th>
-                        <th style="text-align: center;">Status</th>
+                        <th @onclick='() => SetSortColumn("Name")' style="cursor: pointer; user-select: none;">
+                            Player @GetSortIndicator("Name")
+                        </th>
+                        <th @onclick='() => SetSortColumn("Games")' style="text-align: center; cursor: pointer; user-select: none;">
+                            Games @GetSortIndicator("Games")
+                        </th>
+                        <th @onclick='() => SetSortColumn("Time")' style="text-align: center; cursor: pointer; user-select: none;">
+                            Time @GetSortIndicator("Time")
+                        </th>
+                        <th style="text-align: center; width: 2rem;"></th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var stat in GetPlayerStats())
+                    @foreach (var stat in GetSortedPlayerStats())
                     {
                         <tr>
                             <td>
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                    <MudText Typo="Typo.body2">@stat.Name</MudText>
-                                    <SkillLevelBadge SkillLevel="@stat.SkillLevel" Size="Size.Small" />
-                                </MudStack>
+                                <MudText Typo="Typo.body2" Style="white-space: nowrap;">@stat.Name</MudText>
                             </td>
                             <td style="text-align: center;">@stat.GamesPlayed</td>
                             <td style="text-align: center;">@FormatDuration(stat.PlayTime)</td>
-                            <td style="text-align: center;">
-                                @if (stat.IsPlaying)
-                                {
-                                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled">Playing</MudChip>
-                                }
-                                else
-                                {
-                                    <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Outlined">Bench</MudChip>
-                                }
-                            </td>
+                            <td style="text-align: center;">@(stat.IsPlaying ? "\U0001F3F8" : "\U0001FA91")</td>
                         </tr>
                     }
                 </tbody>
@@ -86,11 +80,35 @@
     [Parameter] public Dictionary<Guid, Player> PlayerLookup { get; set; } = new();
 
     private int CompletedMatchCount => Matches.Count(m => m.State == MatchState.Completed);
-    private int BenchCount => GetBenchPlayerIds().Count;
 
-    private TimeSpan TotalPlayTime => Matches
-        .Where(m => m.State == MatchState.Completed && m.CompletedAt.HasValue)
-        .Aggregate(TimeSpan.Zero, (total, m) => total + (m.CompletedAt!.Value - m.StartedAt));
+    private double AverageGamesPerPlayer
+    {
+        get
+        {
+            var activePlayers = Session.SessionPlayers.Where(sp => sp.IsActive).ToList();
+            if (!activePlayers.Any()) return 0;
+            var totalGames = activePlayers.Sum(sp =>
+                Matches.Count(m => m.PlayerIds.Contains(sp.PlayerId)));
+            return (double)totalGames / activePlayers.Count;
+        }
+    }
+
+    private TimeSpan AverageMatchDuration
+    {
+        get
+        {
+            var completedMatches = Matches
+                .Where(m => m.State == MatchState.Completed && m.CompletedAt.HasValue)
+                .ToList();
+            if (!completedMatches.Any()) return TimeSpan.Zero;
+            var totalTicks = completedMatches
+                .Sum(m => (m.CompletedAt!.Value - m.StartedAt).Ticks);
+            return TimeSpan.FromTicks(totalTicks / completedMatches.Count);
+        }
+    }
+
+    private string _sortColumn = "Games";
+    private bool _sortAscending;
 
     private int GetInProgressCount() => Matches.Count(m => m.State == MatchState.InProgress);
 
@@ -98,15 +116,6 @@
         .Where(m => m.State == MatchState.InProgress)
         .SelectMany(m => m.PlayerIds)
         .ToHashSet();
-
-    private List<Guid> GetBenchPlayerIds()
-    {
-        var playingIds = GetPlayingPlayerIds();
-        return Session.SessionPlayers
-            .Where(sp => sp.IsActive && !playingIds.Contains(sp.PlayerId))
-            .Select(sp => sp.PlayerId)
-            .ToList();
-    }
 
     private IEnumerable<PlayerStat> GetPlayerStats()
     {
@@ -150,6 +159,40 @@
             })
             .OrderByDescending(p => p.GamesPlayed)
             .ThenByDescending(p => p.PlayTime);
+    }
+
+    private IEnumerable<PlayerStat> GetSortedPlayerStats()
+    {
+        var stats = GetPlayerStats();
+        return (_sortColumn, _sortAscending) switch
+        {
+            ("Name", false) => stats.OrderByDescending(s => s.Name),
+            ("Name", true) => stats.OrderBy(s => s.Name),
+            ("Games", false) => stats.OrderByDescending(s => s.GamesPlayed).ThenByDescending(s => s.PlayTime),
+            ("Games", true) => stats.OrderBy(s => s.GamesPlayed).ThenBy(s => s.PlayTime),
+            ("Time", false) => stats.OrderByDescending(s => s.PlayTime).ThenByDescending(s => s.GamesPlayed),
+            ("Time", true) => stats.OrderBy(s => s.PlayTime).ThenBy(s => s.GamesPlayed),
+            _ => stats
+        };
+    }
+
+    private void SetSortColumn(string column)
+    {
+        if (_sortColumn == column)
+        {
+            _sortAscending = !_sortAscending;
+        }
+        else
+        {
+            _sortColumn = column;
+            _sortAscending = false;
+        }
+    }
+
+    private string GetSortIndicator(string column)
+    {
+        if (_sortColumn != column) return "";
+        return _sortAscending ? "\u25B2" : "\u25BC";
     }
 
     private string FormatDuration(TimeSpan duration)

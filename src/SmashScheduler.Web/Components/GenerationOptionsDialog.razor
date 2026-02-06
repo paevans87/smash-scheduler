@@ -10,20 +10,23 @@
     </TitleContent>
     <DialogContent>
         <MudStack Spacing="4">
-            <div>
-                <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Courts</MudText>
-                @foreach (var courtNumber in AllCourts)
-                {
-                    var court = courtNumber;
-                    <MudCheckBox T="bool"
-                                 Value="@IsCourtIncluded(court)"
-                                 ValueChanged="@(val => ToggleCourt(court, val))"
-                                 Label="@GetCourtLabel(court)"
-                                 Color="Color.Primary" />
-                }
-            </div>
+            @if (ShowCourts)
+            {
+                <div>
+                    <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Courts</MudText>
+                    @foreach (var courtNumber in AllCourts)
+                    {
+                        var court = courtNumber;
+                        <MudCheckBox T="bool"
+                                     Value="@IsCourtIncluded(court)"
+                                     ValueChanged="@(val => ToggleCourt(court, val))"
+                                     Label="@GetCourtLabel(court)"
+                                     Color="Color.Primary" />
+                    }
+                </div>
 
-            <MudDivider />
+                <MudDivider />
+            }
 
             <div>
                 <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Strategy</MudText>
@@ -53,7 +56,7 @@
         <MudButton OnClick="Submit"
                    Color="Color.Primary"
                    Variant="Variant.Filled"
-                   Disabled="@(!HasIncludedCourts())">
+                   Disabled="@(ShowCourts && !HasIncludedCourts())">
             Generate
         </MudButton>
     </DialogActions>
@@ -63,6 +66,7 @@
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
     [Parameter] public List<int> AllCourts { get; set; } = new();
     [Parameter] public Dictionary<int, string> CourtLabels { get; set; } = new();
+    [Parameter] public bool ShowCourts { get; set; } = true;
 
     private HashSet<int> _excludedCourts = new();
     private GenerationStrategy _strategy = GenerationStrategy.ClubDefault;
