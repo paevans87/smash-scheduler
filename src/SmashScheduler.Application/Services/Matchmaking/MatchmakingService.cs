@@ -56,7 +56,11 @@ public class MatchmakingService(
             .Where(c => !usedCourts.Contains(c))
             .ToList();
 
-        if (options?.ExcludeCourtNumbers is { Count: > 0 })
+        if (options?.MatchCount is > 0)
+        {
+            availableCourts = Enumerable.Range(1, options.MatchCount.Value).ToList();
+        }
+        else if (options?.ExcludeCourtNumbers is { Count: > 0 })
         {
             availableCourts = availableCourts
                 .Where(c => !options.ExcludeCourtNumbers.Contains(c))

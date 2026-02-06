@@ -405,6 +405,85 @@ public class MatchmakingServiceTests
         }
     }
 
+    [Fact]
+    public async Task GenerateMatchesAsync_WithMatchCount_GeneratesDraftsWhenNoCourtsAvailable()
+    {
+        var clubId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var benchPlayers = CreatePlayers(8);
+        var courtPlayers = CreatePlayers(4);
+
+        SetupSessionWithAllCourtsInUse(sessionId, clubId, benchPlayers, courtPlayers, courtCount: 1);
+        _clubRepositoryMock.Setup(r => r.GetByIdAsync(clubId)).ReturnsAsync(new Club { Id = clubId });
+        SetupEmptyBlacklists(benchPlayers.Concat(courtPlayers).ToList());
+
+        var options = new GenerationOptions(MatchCount: 2);
+        var result = await _service.GenerateMatchesAsync(sessionId, options: options);
+
+        result.Should().HaveCount(2);
+        result.SelectMany(r => r.PlayerIds).Distinct().Should().HaveCount(8);
+    }
+
+    [Fact]
+    public async Task GenerateMatchesAsync_WithMatchCount_LimitedByBenchedPlayers()
+    {
+        var clubId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var benchPlayers = CreatePlayers(4);
+        var courtPlayers = CreatePlayers(4);
+
+        SetupSessionWithAllCourtsInUse(sessionId, clubId, benchPlayers, courtPlayers, courtCount: 1);
+        _clubRepositoryMock.Setup(r => r.GetByIdAsync(clubId)).ReturnsAsync(new Club { Id = clubId });
+        SetupEmptyBlacklists(benchPlayers.Concat(courtPlayers).ToList());
+
+        var options = new GenerationOptions(MatchCount: 3);
+        var result = await _service.GenerateMatchesAsync(sessionId, options: options);
+
+        result.Should().HaveCount(1);
+    }
+
+    private void SetupSessionWithAllCourtsInUse(Guid sessionId, Guid clubId, List<Player> benchPlayers, List<Player> courtPlayers, int courtCount)
+    {
+        var allPlayers = benchPlayers.Concat(courtPlayers).ToList();
+        var sessionPlayers = allPlayers.Select(p => new SessionPlayer
+        {
+            SessionId = sessionId,
+            PlayerId = p.Id,
+            Player = p,
+            IsActive = true
+        }).ToList();
+
+        var session = new Session
+        {
+            Id = sessionId,
+            ClubId = clubId,
+            CourtCount = courtCount,
+            State = SessionState.Active,
+            SessionPlayers = sessionPlayers
+        };
+
+        var inProgressMatches = new List<Domain.Entities.Match>();
+        for (var i = 0; i < courtCount; i++)
+        {
+            var matchPlayers = courtPlayers.Skip(i * 4).Take(4).Select(p => p.Id).ToList();
+            if (matchPlayers.Count == 4)
+            {
+                inProgressMatches.Add(new Domain.Entities.Match
+                {
+                    Id = Guid.NewGuid(),
+                    SessionId = sessionId,
+                    CourtNumber = i + 1,
+                    State = MatchState.InProgress,
+                    PlayerIds = matchPlayers,
+                    StartedAt = DateTime.UtcNow.AddMinutes(-10)
+                });
+            }
+        }
+
+        _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId)).ReturnsAsync(session);
+        _matchRepositoryMock.Setup(r => r.GetBySessionIdAsync(sessionId)).ReturnsAsync(inProgressMatches);
+    }
+
     private List<Player> CreatePlayers(int count)
     {
         return Enumerable.Range(1, count).Select(i => new Player

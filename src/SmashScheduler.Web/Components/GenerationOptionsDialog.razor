@@ -27,6 +27,20 @@
 
                 <MudDivider />
             }
+            else
+            {
+                <div>
+                    <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Number of Games</MudText>
+                    <MudNumericField T="int"
+                                     @bind-Value="_matchCount"
+                                     Min="1"
+                                     Max="10"
+                                     Variant="Variant.Outlined"
+                                     Label="Games to generate" />
+                </div>
+
+                <MudDivider />
+            }
 
             <div>
                 <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Strategy</MudText>
@@ -71,6 +85,7 @@
     private HashSet<int> _excludedCourts = new();
     private GenerationStrategy _strategy = GenerationStrategy.ClubDefault;
     private GenderFilter _genderFilter = GenderFilter.Any;
+    private int _matchCount = 1;
 
     private bool IsCourtIncluded(int courtNumber) => !_excludedCourts.Contains(courtNumber);
 
@@ -96,7 +111,8 @@
     private void Submit()
     {
         var excludeList = _excludedCourts.Any() ? _excludedCourts.ToList() : null;
-        var options = new GenerationOptions(excludeList, _strategy, _genderFilter);
+        int? matchCount = ShowCourts ? null : _matchCount;
+        var options = new GenerationOptions(excludeList, _strategy, _genderFilter, matchCount);
         MudDialog.Close(DialogResult.Ok(options));
     }
 }

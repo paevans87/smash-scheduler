@@ -16,25 +16,25 @@
             <MudGrid Spacing="2" Class="mb-3">
                 <MudItem xs="6" sm="3">
                     <MudPaper Class="pa-3 text-center" Elevation="0" Style="background-color: var(--mud-palette-primary-lighten);">
-                        <MudText Typo="Typo.h5" Color="Color.Primary">@GetInProgressCount()</MudText>
+                        <MudText Typo="Typo.h5">@GetInProgressCount()</MudText>
                         <MudText Typo="Typo.caption">In Progress</MudText>
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="6" sm="3">
                     <MudPaper Class="pa-3 text-center" Elevation="0" Style="background-color: var(--mud-palette-success-lighten);">
-                        <MudText Typo="Typo.h5" Color="Color.Success">@CompletedMatchCount</MudText>
+                        <MudText Typo="Typo.h5">@CompletedMatchCount</MudText>
                         <MudText Typo="Typo.caption">Completed</MudText>
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="6" sm="3">
                     <MudPaper Class="pa-3 text-center" Elevation="0" Style="background-color: var(--mud-palette-info-lighten);">
-                        <MudText Typo="Typo.h5" Color="Color.Info">@AverageGamesPerPlayer.ToString("F1")</MudText>
+                        <MudText Typo="Typo.h5">@AverageGamesPerPlayer.ToString("F1")</MudText>
                         <MudText Typo="Typo.caption">Avg Games/Player</MudText>
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="6" sm="3">
                     <MudPaper Class="pa-3 text-center" Elevation="0" Style="background-color: var(--mud-palette-secondary-lighten);">
-                        <MudText Typo="Typo.h5" Color="Color.Secondary">@FormatDuration(AverageMatchDuration)</MudText>
+                        <MudText Typo="Typo.h5">@FormatDuration(AverageMatchDuration)</MudText>
                         <MudText Typo="Typo.caption">Avg Match Duration</MudText>
                     </MudPaper>
                 </MudItem>
