@@ -1,30 +1,16 @@
 # Next Steps 
-## 1: Sessions Draft
-### Abandon
-- [x] We should have an option to abandon/delete the draft.
+## 1: Match Generation
+### The Strategy Selection
+This is not a mandatory selection, the default selection should be "Use Club Default Weightings"
 
-### Player Search
-- [x] A search field for the user to use to search for a player (with typeahead) 
-
-## 2: Generate & Confirm Matches
-### Court Removal
-- [x] We should be able to remove courts from the generation instead of always generating matches on all courts. Do it for all by default, then let the user remove a court if required.
-
-### Match Generation Options
-- [x] The FAB should bring up the available options "Auto Generate", "Add manual"
-
-### Generation Overrides
-- [x] The FAB should also have options to generate 'types' of matchups.
-Equal - Focus on equal skill across players, either all male, all female, or mixed only
-Strong - Focus on equal skill of the higher score
-Players With Least Games - Focus on getting the players who have played the least on the court, skill score being the secondary
-
+## 2: Add Manual
 ### Save as Draft
-- [x] We should remove this from auto generated options and only have this available on manual creation
+Lets remove this and instead change the flow in #3
 
-## 3: Match Completion
-### Display
-- [x] The team content should be centred to use the card size more effectively.
+## 3: Fab Option
+### Create Draft
+Underneath Add Manual we should add here the "Create Draft" flow
 
-### Complete Match
-- [x] The team card should be clickable to bring up the "Complete Match" dialogue with the selected team pre-selected as the winners.
+## 4: Main Page
+### OVerfill
+The "Smash Scheduler" text is overspilling causing scroll bars.
