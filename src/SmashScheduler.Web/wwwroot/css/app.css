@@ -492,39 +492,135 @@ html, body {
     content: "An error has occurred."
 }
 
-.loading-progress {
+.loading-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: var(--smash-background, #F8F9FA);
+    gap: 12px;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.loading-icon-wrapper {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin-bottom: 8px;
+    animation: loading-icon-breathe 2.4s ease-in-out infinite;
+}
+
+.loading-icon-glow {
     position: absolute;
-    display: block;
-    width: 8rem;
-    height: 8rem;
-    inset: 20vh 0 auto 0;
-    margin: 0 auto 0 auto;
+    inset: -20px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(46,204,113,0.3) 0%, transparent 70%);
+    animation: loading-glow-pulse 2.4s ease-in-out infinite;
 }
 
-.loading-progress circle {
-    fill: none;
-    stroke: #e0e0e0;
-    stroke-width: 0.6rem;
-    transform-origin: 50% 50%;
-    transform: rotate(-90deg);
+.loading-icon {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    border-radius: 24px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
 }
 
-.loading-progress circle:last-child {
-    stroke: var(--smash-primary-500);
-    stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
-    transition: stroke-dasharray 0.05s ease-in-out;
+.loading-app-name {
+    font-family: 'Roboto', sans-serif;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--smash-text-primary, #2C3E50);
 }
 
-.loading-progress-text {
+.loading-tagline {
+    font-family: 'Roboto', sans-serif;
+    font-size: 0.875rem;
+    color: var(--smash-text-secondary, #7F8C8D);
+}
+
+.loading-bar-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.loading-bar-track {
+    width: 240px;
+    max-width: 80vw;
+    height: 4px;
+    border-radius: 2px;
+    background: #E0E0E0;
+    overflow: hidden;
+}
+
+.loading-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #27AE60, #2ECC71);
+    width: var(--blazor-load-percentage, 0%);
+    transition: width 0.3s ease;
+    position: relative;
+}
+
+.loading-bar-fill::after {
+    content: '';
     position: absolute;
-    text-align: center;
-    font-weight: bold;
-    inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
-    color: var(--smash-text-primary);
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: loading-shimmer 1.8s ease-in-out infinite;
 }
 
-.loading-progress-text:after {
+.loading-bar-text {
+    font-family: 'Roboto', sans-serif;
+    font-size: 0.75rem;
+    color: var(--smash-text-secondary, #7F8C8D);
+}
+
+.loading-bar-text::after {
     content: var(--blazor-load-percentage-text, "Loading");
+}
+
+@media (prefers-color-scheme: dark) {
+    .loading-screen {
+        background: #121212;
+    }
+
+    .loading-app-name {
+        color: #ECEFF1;
+    }
+
+    .loading-tagline,
+    .loading-bar-text {
+        color: #90A4AE;
+    }
+
+    .loading-bar-track {
+        background: #333333;
+    }
+
+    .loading-icon {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    }
+}
+
+@keyframes loading-icon-breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+}
+
+@keyframes loading-glow-pulse {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.1); }
+}
+
+@keyframes loading-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
 }
 
 code {
