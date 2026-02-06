@@ -499,45 +499,47 @@ html, body {
     justify-content: center;
     min-height: 100vh;
     background: var(--smash-background, #F8F9FA);
-    gap: 12px;
-    padding: 24px;
+    gap: 4px;
+    padding: 16px;
+    padding-bottom: 20vh;
     box-sizing: border-box;
 }
 
 .loading-icon-wrapper {
     position: relative;
-    width: 120px;
-    height: 120px;
-    margin-bottom: 8px;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 6px;
     animation: loading-icon-breathe 2.4s ease-in-out infinite;
 }
 
 .loading-icon-glow {
     position: absolute;
-    inset: -20px;
+    inset: -10px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(46,204,113,0.3) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(46,204,113,0.2) 0%, transparent 70%);
     animation: loading-glow-pulse 2.4s ease-in-out infinite;
 }
 
 .loading-icon {
     position: relative;
-    width: 120px;
-    height: 120px;
-    border-radius: 24px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .loading-app-name {
     font-family: 'Roboto', sans-serif;
-    font-size: 1.75rem;
+    font-size: 1.125rem;
     font-weight: 700;
     color: var(--smash-text-primary, #2C3E50);
+    letter-spacing: -0.01em;
 }
 
 .loading-tagline {
     font-family: 'Roboto', sans-serif;
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     color: var(--smash-text-secondary, #7F8C8D);
 }
 
@@ -545,14 +547,14 @@ html, body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
-    margin-top: 8px;
+    gap: 4px;
+    margin-top: 10px;
 }
 
 .loading-bar-track {
-    width: 240px;
-    max-width: 80vw;
-    height: 4px;
+    width: 160px;
+    max-width: 60vw;
+    height: 3px;
     border-radius: 2px;
     background: #E0E0E0;
     overflow: hidden;
@@ -577,7 +579,7 @@ html, body {
 
 .loading-bar-text {
     font-family: 'Roboto', sans-serif;
-    font-size: 0.75rem;
+    font-size: 0.625rem;
     color: var(--smash-text-secondary, #7F8C8D);
 }
 
@@ -604,18 +606,18 @@ html, body {
     }
 
     .loading-icon {
-        box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.25);
     }
 }
 
 @keyframes loading-icon-breathe {
     0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.06); }
+    50% { transform: scale(1.04); }
 }
 
 @keyframes loading-glow-pulse {
-    0%, 100% { opacity: 0.6; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.1); }
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 0.9; transform: scale(1.08); }
 }
 
 @keyframes loading-shimmer {
