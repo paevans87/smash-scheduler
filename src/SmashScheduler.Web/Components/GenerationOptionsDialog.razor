@@ -1,0 +1,97 @@
+@using SmashScheduler.Application.Services.Matchmaking.Models
+@using SmashScheduler.Domain.Enums
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Tune" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Generation Options</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="4">
+            <div>
+                <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Courts</MudText>
+                @foreach (var courtNumber in AllCourts)
+                {
+                    var court = courtNumber;
+                    <MudCheckBox T="bool"
+                                 Value="@IsCourtIncluded(court)"
+                                 ValueChanged="@(val => ToggleCourt(court, val))"
+                                 Label="@GetCourtLabel(court)"
+                                 Color="Color.Primary" />
+                }
+            </div>
+
+            <MudDivider />
+
+            <div>
+                <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Strategy</MudText>
+                <MudRadioGroup T="GenerationStrategy" @bind-Value="_strategy">
+                    <MudRadio Value="GenerationStrategy.Equal" Color="Color.Primary">Equal (balanced skill)</MudRadio>
+                    <MudRadio Value="GenerationStrategy.Strong" Color="Color.Primary">Strong (higher skill focus)</MudRadio>
+                    <MudRadio Value="GenerationStrategy.LeastGames" Color="Color.Primary">Least Games (prioritise bench time)</MudRadio>
+                </MudRadioGroup>
+            </div>
+
+            <MudDivider />
+
+            <div>
+                <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Gender Filter</MudText>
+                <MudRadioGroup T="GenderFilter" @bind-Value="_genderFilter">
+                    <MudRadio Value="GenderFilter.Any" Color="Color.Primary">Any</MudRadio>
+                    <MudRadio Value="GenderFilter.MaleOnly" Color="Color.Primary">Male Only</MudRadio>
+                    <MudRadio Value="GenderFilter.FemaleOnly" Color="Color.Primary">Female Only</MudRadio>
+                    <MudRadio Value="GenderFilter.MixedOnly" Color="Color.Primary">Mixed Only</MudRadio>
+                </MudRadioGroup>
+            </div>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton OnClick="Submit"
+                   Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   Disabled="@(!HasIncludedCourts())">
+            Generate
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public List<int> AllCourts { get; set; } = new();
+    [Parameter] public Dictionary<int, string> CourtLabels { get; set; } = new();
+
+    private HashSet<int> _excludedCourts = new();
+    private GenerationStrategy _strategy = GenerationStrategy.Equal;
+    private GenderFilter _genderFilter = GenderFilter.Any;
+
+    private bool IsCourtIncluded(int courtNumber) => !_excludedCourts.Contains(courtNumber);
+
+    private void ToggleCourt(int courtNumber, bool included)
+    {
+        if (included)
+            _excludedCourts.Remove(courtNumber);
+        else
+            _excludedCourts.Add(courtNumber);
+    }
+
+    private bool HasIncludedCourts() => AllCourts.Any(c => !_excludedCourts.Contains(c));
+
+    private string GetCourtLabel(int courtNumber)
+    {
+        return CourtLabels.TryGetValue(courtNumber, out var label) && !string.IsNullOrWhiteSpace(label)
+            ? label
+            : $"Court {courtNumber}";
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        var excludeList = _excludedCourts.Any() ? _excludedCourts.ToList() : null;
+        var options = new GenerationOptions(excludeList, _strategy, _genderFilter);
+        MudDialog.Close(DialogResult.Ok(options));
+    }
+}

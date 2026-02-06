@@ -13,7 +13,7 @@ public class MatchmakingService(
     IPlayerRepository playerRepository,
     IClubRepository clubRepository) : IMatchmakingService
 {
-    public async Task<List<MatchCandidate>> GenerateMatchesAsync(Guid sessionId, List<Guid>? excludePlayerIds = null)
+    public async Task<List<MatchCandidate>> GenerateMatchesAsync(Guid sessionId, List<Guid>? excludePlayerIds = null, GenerationOptions? options = null)
     {
         var session = await sessionRepository.GetByIdAsync(sessionId);
         if (session == null) throw new InvalidOperationException("Session not found");
@@ -56,10 +56,27 @@ public class MatchmakingService(
             .Where(c => !usedCourts.Contains(c))
             .ToList();
 
+        if (options?.ExcludeCourtNumbers is { Count: > 0 })
+        {
+            availableCourts = availableCourts
+                .Where(c => !options.ExcludeCourtNumbers.Contains(c))
+                .ToList();
+        }
+
+        if (options?.GenderFilter is not null and not GenderFilter.Any)
+        {
+            benchedPlayers = ApplyGenderFilter(benchedPlayers, options.GenderFilter);
+        }
+
+        if (options?.Strategy is not null and not GenerationStrategy.Equal)
+        {
+            weights = ApplyStrategyWeights(options.Strategy);
+        }
+
         var completedMatches = existingMatches.Where(m => m.State == MatchState.Completed).ToList();
         var lastMatchTimes = BuildLastMatchCompletionTimes(completedMatches);
 
-        return GenerateScoredMatches(benchedPlayers, availableCourts, completedMatches, lastMatchTimes, weights, blacklistMode, blacklists);
+        return GenerateScoredMatches(benchedPlayers, availableCourts, completedMatches, lastMatchTimes, weights, blacklistMode, blacklists, options?.GenderFilter ?? GenderFilter.Any);
     }
 
     public async Task<MatchCandidate?> GenerateSingleMatchAsync(Guid sessionId, int courtNumber)
@@ -120,7 +137,8 @@ public class MatchmakingService(
         Dictionary<Guid, DateTime> lastMatchTimes,
         ScoringWeights weights,
         BlacklistMode blacklistMode,
-        List<PlayerBlacklist> blacklists)
+        List<PlayerBlacklist> blacklists,
+        GenderFilter genderFilter = GenderFilter.Any)
     {
         var candidates = new List<MatchCandidate>();
 
@@ -140,7 +158,7 @@ public class MatchmakingService(
 
         while (remainingPlayers.Count >= 4 && courtIndex < availableCourts.Count)
         {
-            var bestCandidate = FindBestFoursomeWithScoring(remainingPlayers, context, weights, blacklistMode, blacklists);
+            var bestCandidate = FindBestFoursomeWithScoring(remainingPlayers, context, weights, blacklistMode, blacklists, genderFilter);
             if (bestCandidate == null) break;
 
             bestCandidate.CourtNumber = availableCourts[courtIndex];
@@ -161,7 +179,8 @@ public class MatchmakingService(
         MatchScoringContext context,
         ScoringWeights weights,
         BlacklistMode blacklistMode,
-        List<PlayerBlacklist> blacklists)
+        List<PlayerBlacklist> blacklists,
+        GenderFilter genderFilter = GenderFilter.Any)
     {
         if (availablePlayers.Count < 4)
         {
@@ -189,6 +208,11 @@ public class MatchmakingService(
             };
 
             if (blacklistMode == BlacklistMode.HardLimit && HasBlacklistViolation(candidate.PlayerIds, blacklists))
+            {
+                continue;
+            }
+
+            if (genderFilter == GenderFilter.MixedOnly && !IsMixedGenderCombination(combination))
             {
                 continue;
             }
@@ -299,6 +323,32 @@ public class MatchmakingService(
         }
 
         return combinations;
+    }
+
+    private static List<Player> ApplyGenderFilter(List<Player> players, GenderFilter filter)
+    {
+        return filter switch
+        {
+            GenderFilter.MaleOnly => players.Where(p => p.Gender == Gender.Male).ToList(),
+            GenderFilter.FemaleOnly => players.Where(p => p.Gender == Gender.Female).ToList(),
+            _ => players
+        };
+    }
+
+    private static ScoringWeights ApplyStrategyWeights(GenerationStrategy strategy)
+    {
+        return strategy switch
+        {
+            GenerationStrategy.Strong => new ScoringWeights { SkillBalance = 70, MatchHistory = 20, TimeOffCourt = 10 },
+            GenerationStrategy.LeastGames => new ScoringWeights { SkillBalance = 15, MatchHistory = 15, TimeOffCourt = 70 },
+            _ => new ScoringWeights()
+        };
+    }
+
+    private static bool IsMixedGenderCombination(List<Player> players)
+    {
+        var genders = players.Select(p => p.Gender).Distinct().ToList();
+        return genders.Count > 1;
     }
 
     private Dictionary<Guid, DateTime> BuildLastMatchCompletionTimes(List<Match> completedMatches)

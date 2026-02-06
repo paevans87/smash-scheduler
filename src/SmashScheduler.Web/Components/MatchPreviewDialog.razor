@@ -131,6 +131,7 @@
     [Parameter] public List<MatchCandidate> ProposedMatches { get; set; } = new();
     [Parameter] public Dictionary<Guid, Player> PlayerLookup { get; set; } = new();
     [Parameter] public Guid SessionId { get; set; }
+    [Parameter] public GenerationOptions? GenerationOptions { get; set; }
 
     private List<MatchCandidate> _currentMatches = new();
     private List<Guid> _excludedPlayerIds = new();
@@ -159,7 +160,7 @@
         _isRegenerating = true;
         StateHasChanged();
 
-        var candidates = await MatchmakingService.GenerateMatchesAsync(SessionId, _excludedPlayerIds);
+        var candidates = await MatchmakingService.GenerateMatchesAsync(SessionId, _excludedPlayerIds, GenerationOptions);
         _currentMatches = candidates;
 
         _isRegenerating = false;

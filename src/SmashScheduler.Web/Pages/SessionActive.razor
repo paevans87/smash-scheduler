@@ -117,7 +117,37 @@ else
 
     private async Task GenerateMatches()
     {
-        var candidates = await MatchmakingService.GenerateMatchesAsync(SessionId);
+        if (_session == null) return;
+
+        var usedCourts = _activeMatches
+            .Where(m => m.State == MatchState.InProgress)
+            .Select(m => m.CourtNumber)
+            .ToHashSet();
+
+        var allAvailableCourts = Enumerable.Range(1, _session.CourtCount)
+            .Where(c => !usedCourts.Contains(c))
+            .ToList();
+
+        var optionsParams = new DialogParameters<GenerationOptionsDialog>
+        {
+            { x => x.AllCourts, allAvailableCourts },
+            { x => x.CourtLabels, _session.CourtLabels }
+        };
+
+        var optionsDialogOptions = new DialogOptions
+        {
+            MaxWidth = MaxWidth.ExtraSmall,
+            CloseOnEscapeKey = true
+        };
+
+        var optionsDialog = await DialogService.ShowAsync<GenerationOptionsDialog>("Generation Options", optionsParams, optionsDialogOptions);
+        var optionsResult = await optionsDialog.Result;
+
+        if (optionsResult is { Canceled: true } or null) return;
+
+        var generationOptions = (GenerationOptions)optionsResult.Data!;
+
+        var candidates = await MatchmakingService.GenerateMatchesAsync(SessionId, options: generationOptions);
 
         if (!candidates.Any())
         {
@@ -133,7 +163,8 @@ else
         {
             { x => x.ProposedMatches, candidates },
             { x => x.PlayerLookup, _playerLookup },
-            { x => x.SessionId, SessionId }
+            { x => x.SessionId, SessionId },
+            { x => x.GenerationOptions, generationOptions }
         };
 
         var options = new DialogOptions

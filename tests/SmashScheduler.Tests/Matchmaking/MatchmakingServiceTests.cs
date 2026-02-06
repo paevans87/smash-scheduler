@@ -2,6 +2,7 @@ using FluentAssertions;
 using Moq;
 using SmashScheduler.Application.Interfaces.Repositories;
 using SmashScheduler.Application.Services.Matchmaking;
+using SmashScheduler.Application.Services.Matchmaking.Models;
 using SmashScheduler.Domain.Entities;
 using SmashScheduler.Domain.Enums;
 using SmashScheduler.Domain.ValueObjects;
@@ -235,6 +236,142 @@ public class MatchmakingServiceTests
         result.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task GenerateMatchesAsync_WithExcludedCourts_DoesNotUseThem()
+    {
+        var clubId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var players = CreatePlayers(8);
+        var club = new Club { Id = clubId, ScoringWeights = new ScoringWeights() };
+
+        SetupSession(sessionId, clubId, players, courtCount: 3);
+        _clubRepositoryMock.Setup(r => r.GetByIdAsync(clubId)).ReturnsAsync(club);
+        SetupEmptyBlacklists(players);
+
+        var options = new GenerationOptions(ExcludeCourtNumbers: new List<int> { 2 });
+        var result = await _service.GenerateMatchesAsync(sessionId, options: options);
+
+        result.Should().NotBeEmpty();
+        result.Should().OnlyContain(m => m.CourtNumber != 2);
+    }
+
+    [Fact]
+    public async Task GenerateMatchesAsync_WithMaleOnlyFilter_OnlyIncludesMales()
+    {
+        var clubId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var players = CreateMixedGenderPlayers(8);
+        var club = new Club { Id = clubId, ScoringWeights = new ScoringWeights() };
+
+        SetupSession(sessionId, clubId, players, courtCount: 2);
+        _clubRepositoryMock.Setup(r => r.GetByIdAsync(clubId)).ReturnsAsync(club);
+        SetupEmptyBlacklists(players);
+
+        var options = new GenerationOptions(GenderFilter: GenderFilter.MaleOnly);
+        var result = await _service.GenerateMatchesAsync(sessionId, options: options);
+
+        result.Should().NotBeEmpty();
+        foreach (var candidate in result)
+        {
+            var matchPlayers = candidate.PlayerIds
+                .Select(id => players.First(p => p.Id == id));
+            matchPlayers.Should().OnlyContain(p => p.Gender == Gender.Male);
+        }
+    }
+
+    [Fact]
+    public async Task GenerateMatchesAsync_WithFemaleOnlyFilter_OnlyIncludesFemales()
+    {
+        var clubId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var players = CreateMixedGenderPlayers(8);
+        var club = new Club { Id = clubId, ScoringWeights = new ScoringWeights() };
+
+        SetupSession(sessionId, clubId, players, courtCount: 2);
+        _clubRepositoryMock.Setup(r => r.GetByIdAsync(clubId)).ReturnsAsync(club);
+        SetupEmptyBlacklists(players);
+
+        var options = new GenerationOptions(GenderFilter: GenderFilter.FemaleOnly);
+        var result = await _service.GenerateMatchesAsync(sessionId, options: options);
+
+        result.Should().NotBeEmpty();
+        foreach (var candidate in result)
+        {
+            var matchPlayers = candidate.PlayerIds
+                .Select(id => players.First(p => p.Id == id));
+            matchPlayers.Should().OnlyContain(p => p.Gender == Gender.Female);
+        }
+    }
+
+    [Fact]
+    public async Task GenerateMatchesAsync_WithMixedOnlyFilter_OnlyIncludesMixedCombinations()
+    {
+        var clubId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var players = CreateMixedGenderPlayers(8);
+        var club = new Club { Id = clubId, ScoringWeights = new ScoringWeights() };
+
+        SetupSession(sessionId, clubId, players, courtCount: 2);
+        _clubRepositoryMock.Setup(r => r.GetByIdAsync(clubId)).ReturnsAsync(club);
+        SetupEmptyBlacklists(players);
+
+        var options = new GenerationOptions(GenderFilter: GenderFilter.MixedOnly);
+        var result = await _service.GenerateMatchesAsync(sessionId, options: options);
+
+        result.Should().NotBeEmpty();
+        foreach (var candidate in result)
+        {
+            var matchPlayers = candidate.PlayerIds
+                .Select(id => players.First(p => p.Id == id)).ToList();
+            var genders = matchPlayers.Select(p => p.Gender).Distinct();
+            genders.Should().HaveCountGreaterThan(1);
+        }
+    }
+
+    [Fact]
+    public async Task GenerateMatchesAsync_WithStrongStrategy_UsesHighSkillWeights()
+    {
+        var clubId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var players = CreatePlayers(4);
+        var club = new Club
+        {
+            Id = clubId,
+            ScoringWeights = new ScoringWeights { SkillBalance = 10, MatchHistory = 10, TimeOffCourt = 80 }
+        };
+
+        SetupSession(sessionId, clubId, players);
+        _clubRepositoryMock.Setup(r => r.GetByIdAsync(clubId)).ReturnsAsync(club);
+        SetupEmptyBlacklists(players);
+
+        var options = new GenerationOptions(Strategy: GenerationStrategy.Strong);
+        var result = await _service.GenerateMatchesAsync(sessionId, options: options);
+
+        result.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task GenerateMatchesAsync_WithLeastGamesStrategy_ReturnsResults()
+    {
+        var clubId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var players = CreatePlayers(4);
+        var club = new Club
+        {
+            Id = clubId,
+            ScoringWeights = new ScoringWeights { SkillBalance = 80, MatchHistory = 10, TimeOffCourt = 10 }
+        };
+
+        SetupSession(sessionId, clubId, players);
+        _clubRepositoryMock.Setup(r => r.GetByIdAsync(clubId)).ReturnsAsync(club);
+        SetupEmptyBlacklists(players);
+
+        var options = new GenerationOptions(Strategy: GenerationStrategy.LeastGames);
+        var result = await _service.GenerateMatchesAsync(sessionId, options: options);
+
+        result.Should().HaveCount(1);
+    }
+
     private void SetupSession(Guid sessionId, Guid clubId, List<Player> players, int courtCount = 1)
     {
         var sessionPlayers = players.Select(p => new SessionPlayer
@@ -276,6 +413,19 @@ public class MatchmakingServiceTests
             Name = $"Player {i}",
             SkillLevel = 5,
             Gender = Gender.Male,
+            PlayStylePreference = PlayStylePreference.Open,
+            ClubId = Guid.NewGuid()
+        }).ToList();
+    }
+
+    private List<Player> CreateMixedGenderPlayers(int count)
+    {
+        return Enumerable.Range(1, count).Select(i => new Player
+        {
+            Id = Guid.NewGuid(),
+            Name = $"Player {i}",
+            SkillLevel = 5,
+            Gender = i % 2 == 0 ? Gender.Female : Gender.Male,
             PlayStylePreference = PlayStylePreference.Open,
             ClubId = Guid.NewGuid()
         }).ToList();
