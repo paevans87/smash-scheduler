@@ -82,17 +82,11 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
-        <MudButton OnClick="SaveAsDraft"
-                   Color="Color.Info"
-                   Variant="Variant.Outlined"
-                   Disabled="@(_selectedPlayerIds.Count != 4)">
-            Save as Draft
-        </MudButton>
         <MudButton OnClick="Submit"
                    Color="Color.Primary"
                    Variant="Variant.Filled"
                    Disabled="@(_selectedPlayerIds.Count != 4)">
-            Create Match
+            @SubmitLabel
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -103,6 +97,9 @@
     [Parameter] public Dictionary<Guid, Player> PlayerLookup { get; set; } = new();
     [Parameter] public List<Guid> BenchPlayerIds { get; set; } = new();
     [Parameter] public List<Guid> SuggestedPlayerIds { get; set; } = new();
+    [Parameter] public bool IsDraftMode { get; set; }
+
+    private string SubmitLabel => IsDraftMode ? "Create Draft" : "Create Match";
 
     private List<Guid> _selectedPlayerIds = new();
 
@@ -143,7 +140,5 @@
 
     private void Cancel() => MudDialog.Cancel();
 
-    private void Submit() => MudDialog.Close(DialogResult.Ok(new ManualMatchResult(CourtNumber, _selectedPlayerIds, false)));
-
-    private void SaveAsDraft() => MudDialog.Close(DialogResult.Ok(new ManualMatchResult(CourtNumber, _selectedPlayerIds, true)));
+    private void Submit() => MudDialog.Close(DialogResult.Ok(new ManualMatchResult(CourtNumber, _selectedPlayerIds, IsDraftMode)));
 }

@@ -28,6 +28,7 @@
             <div>
                 <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Strategy</MudText>
                 <MudRadioGroup T="GenerationStrategy" @bind-Value="_strategy">
+                    <MudRadio Value="GenerationStrategy.ClubDefault" Color="Color.Primary">Use Club Default Weightings</MudRadio>
                     <MudRadio Value="GenerationStrategy.Equal" Color="Color.Primary">Equal (balanced skill)</MudRadio>
                     <MudRadio Value="GenerationStrategy.Strong" Color="Color.Primary">Strong (higher skill focus)</MudRadio>
                     <MudRadio Value="GenerationStrategy.LeastGames" Color="Color.Primary">Least Games (prioritise bench time)</MudRadio>
@@ -64,7 +65,7 @@
     [Parameter] public Dictionary<int, string> CourtLabels { get; set; } = new();
 
     private HashSet<int> _excludedCourts = new();
-    private GenerationStrategy _strategy = GenerationStrategy.Equal;
+    private GenerationStrategy _strategy = GenerationStrategy.ClubDefault;
     private GenderFilter _genderFilter = GenderFilter.Any;
 
     private bool IsCourtIncluded(int courtNumber) => !_excludedCourts.Contains(courtNumber);

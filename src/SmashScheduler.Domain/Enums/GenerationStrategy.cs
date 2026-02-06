@@ -2,7 +2,8 @@ namespace SmashScheduler.Domain.Enums;
 
 public enum GenerationStrategy
 {
-    Equal = 0,
-    Strong = 1,
-    LeastGames = 2
+    ClubDefault = 0,
+    Equal = 1,
+    Strong = 2,
+    LeastGames = 3
 }

@@ -68,7 +68,7 @@ public class MatchmakingService(
             benchedPlayers = ApplyGenderFilter(benchedPlayers, options.GenderFilter);
         }
 
-        if (options?.Strategy is not null and not GenerationStrategy.Equal)
+        if (options?.Strategy is not null and not GenerationStrategy.ClubDefault)
         {
             weights = ApplyStrategyWeights(options.Strategy);
         }

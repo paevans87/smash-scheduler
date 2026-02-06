@@ -55,6 +55,7 @@ else
                       CanGenerateMatches="@CanGenerateMatches()"
                       OnGenerateMatches="GenerateMatches"
                       OnAddManualMatch="OpenManualMatchDialog"
+                      OnCreateDraftMatch="OpenCreateDraftDialog"
                       OnMatchComplete="CompleteMatch"
                       OnMatchPlayersUpdate="UpdateMatchPlayers"
                       OnStartDraftMatch="StartDraftMatch"
@@ -368,15 +369,48 @@ else
 
         if (result is { Canceled: false, Data: ManualMatchResult manualResult })
         {
-            if (manualResult.SaveAsDraft)
-            {
-                await MatchService.CreateDraftMatchAsync(SessionId, manualResult.PlayerIds);
-            }
-            else
-            {
-                await MatchService.CreateMatchAsync(SessionId, manualResult.CourtNumber, manualResult.PlayerIds, false);
-            }
+            await MatchService.CreateMatchAsync(SessionId, manualResult.CourtNumber, manualResult.PlayerIds, false);
+            await LoadData();
+            StateHasChanged();
+        }
+    }
 
+    private async Task OpenCreateDraftDialog()
+    {
+        if (_session == null) return;
+
+        var committedPlayerIds = _activeMatches
+            .Where(m => m.State != MatchState.Completed)
+            .SelectMany(m => m.PlayerIds)
+            .ToHashSet();
+
+        var benchPlayerIds = _session.SessionPlayers
+            .Where(sp => sp.IsActive && !committedPlayerIds.Contains(sp.PlayerId))
+            .Select(sp => sp.PlayerId)
+            .ToList();
+
+        var parameters = new DialogParameters<ManualMatchDialog>
+        {
+            { x => x.CourtNumber, 0 },
+            { x => x.PlayerLookup, _playerLookup },
+            { x => x.BenchPlayerIds, benchPlayerIds },
+            { x => x.SuggestedPlayerIds, new List<Guid>() },
+            { x => x.IsDraftMode, true }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<ManualMatchDialog>("Create Draft", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: ManualMatchResult manualResult })
+        {
+            await MatchService.CreateDraftMatchAsync(SessionId, manualResult.PlayerIds);
             await LoadData();
             StateHasChanged();
         }

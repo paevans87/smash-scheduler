@@ -107,6 +107,7 @@
         <ChildContent>
             <MudMenuItem Icon="@Icons.Material.Filled.AutoAwesome" OnClick="HandleGenerateMatches">Auto Generate</MudMenuItem>
             <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="() => OnAddManualMatch.InvokeAsync()">Add Manual</MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.Drafts" OnClick="() => OnCreateDraftMatch.InvokeAsync()">Create Draft</MudMenuItem>
         </ChildContent>
     </MudMenu>
 }
@@ -122,6 +123,7 @@
     [Parameter] public EventCallback<Guid> OnDeleteDraftMatch { get; set; }
     [Parameter] public bool CanGenerateMatches { get; set; }
     [Parameter] public EventCallback OnAddManualMatch { get; set; }
+    [Parameter] public EventCallback OnCreateDraftMatch { get; set; }
     [Parameter] public Dictionary<Guid, int> GamesPlayedLookup { get; set; } = new();
 
     private bool IsGenerating { get; set; }
