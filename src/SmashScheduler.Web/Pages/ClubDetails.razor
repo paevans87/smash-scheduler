@@ -39,11 +39,18 @@ else
                     </MudStack>
                 </MudStack>
             </MudStack>
-            <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                           Color="Color.Primary"
-                           Variant="Variant.Filled"
-                           Size="Size.Medium"
-                           OnClick="OpenEditDialog" />
+            <MudStack Row="true" Spacing="1">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                               Color="Color.Primary"
+                               Variant="Variant.Filled"
+                               Size="Size.Medium"
+                               OnClick="OpenEditDialog" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                               Color="Color.Error"
+                               Variant="Variant.Filled"
+                               Size="Size.Medium"
+                               OnClick="DeleteClub" />
+            </MudStack>
         </MudStack>
 
         <MudGrid Spacing="3">
@@ -174,6 +181,21 @@ else
             _ => $"/clubs/{ClubId}/sessions"
         };
         Navigation.NavigateTo(route);
+    }
+
+    private async Task DeleteClub()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Club?",
+            "This will permanently delete the club along with all its players and sessions.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            await ClubService.DeleteClubAsync(ClubId);
+            Navigation.NavigateTo("/clubs");
+        }
     }
 
     private async Task OpenEditDialog()

@@ -16,7 +16,7 @@ public class PlayerServiceBlacklistTests
     public PlayerServiceBlacklistTests()
     {
         _playerRepositoryMock = new Mock<IPlayerRepository>();
-        _playerService = new PlayerService(_playerRepositoryMock.Object);
+        _playerService = new PlayerService(_playerRepositoryMock.Object, new HttpClient());
     }
 
     [Fact]

@@ -1,0 +1,24 @@
+{
+  "Players": [
+    { "Name": "James Walker", "SkillLevel": 7, "Gender": 0, "PlayStylePreference": 0 },
+    { "Name": "Sophie Turner", "SkillLevel": 8, "Gender": 1, "PlayStylePreference": 1 },
+    { "Name": "Oliver Chen", "SkillLevel": 5, "Gender": 0, "PlayStylePreference": 2 },
+    { "Name": "Emily Brooks", "SkillLevel": 6, "Gender": 1, "PlayStylePreference": 0 },
+    { "Name": "Liam Patel", "SkillLevel": 9, "Gender": 0, "PlayStylePreference": 0 },
+    { "Name": "Charlotte Evans", "SkillLevel": 4, "Gender": 1, "PlayStylePreference": 2 },
+    { "Name": "Harry Singh", "SkillLevel": 7, "Gender": 0, "PlayStylePreference": 1 },
+    { "Name": "Amelia Clarke", "SkillLevel": 6, "Gender": 1, "PlayStylePreference": 0 },
+    { "Name": "George Mitchell", "SkillLevel": 3, "Gender": 0, "PlayStylePreference": 2 },
+    { "Name": "Isla Robertson", "SkillLevel": 8, "Gender": 1, "PlayStylePreference": 1 },
+    { "Name": "Thomas Wright", "SkillLevel": 5, "Gender": 0, "PlayStylePreference": 0 },
+    { "Name": "Grace Phillips", "SkillLevel": 7, "Gender": 1, "PlayStylePreference": 2 },
+    { "Name": "Daniel Cooper", "SkillLevel": 6, "Gender": 0, "PlayStylePreference": 1 },
+    { "Name": "Mia Henderson", "SkillLevel": 4, "Gender": 1, "PlayStylePreference": 0 },
+    { "Name": "William Foster", "SkillLevel": 8, "Gender": 0, "PlayStylePreference": 2 },
+    { "Name": "Poppy Barnes", "SkillLevel": 5, "Gender": 1, "PlayStylePreference": 1 },
+    { "Name": "Jack Murphy", "SkillLevel": 9, "Gender": 0, "PlayStylePreference": 0 },
+    { "Name": "Ruby Thompson", "SkillLevel": 3, "Gender": 1, "PlayStylePreference": 2 },
+    { "Name": "Oscar Hughes", "SkillLevel": 6, "Gender": 0, "PlayStylePreference": 1 },
+    { "Name": "Freya Watson", "SkillLevel": 7, "Gender": 1, "PlayStylePreference": 0 }
+  ]
+}

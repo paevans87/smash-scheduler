@@ -51,6 +51,12 @@ else
                                                    Size="Size.Small"
                                                    OnClick="@(() => OpenBlacklistDialog(player))" />
                                 </MudTooltip>
+                                <MudTooltip Text="Delete Player">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Color="Color.Error"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => DeletePlayer(player))" />
+                                </MudTooltip>
                             </MudStack>
                         </MudStack>
                     </MudCardContent>
@@ -125,6 +131,21 @@ else
 
         if (result is { Canceled: false })
         {
+            _players = await PlayerService.GetByClubIdAsync(ClubId);
+        }
+    }
+
+    private async Task DeletePlayer(Player player)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Player?",
+            $"Are you sure you want to delete {player.Name}?",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            await PlayerService.DeletePlayerAsync(player.Id);
             _players = await PlayerService.GetByClubIdAsync(ClubId);
         }
     }
