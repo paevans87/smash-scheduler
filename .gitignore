@@ -327,3 +327,24 @@ $RECYCLE.BIN/
 # User secrets
 secrets.json
 appsettings.local.json
+
+# --- Bubblewrap / Android Generated Files ---
+
+# 1. Build Artifacts
+bubblewrap/build/
+bubblewrap/app/build/
+bubblewrap/*.apk
+bubblewrap/*.aab
+
+# 2. Local/Environment Configuration
+bubblewrap/local.properties
+bubblewrap/.gradle/
+
+# 3. Signing Keys (CRITICAL: Do not commit these)
+bubblewrap/*.keystore
+bubblewrap/*.jks
+
+# 4. OS & IDE noise
+bubblewrap/.idea/
+bubblewrap/*.iml
+bubblewrap/.DS_Store
