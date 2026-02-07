@@ -327,3 +327,66 @@ $RECYCLE.BIN/
 # User secrets
 secrets.json
 appsettings.local.json
+
+# --- Bubblewrap / Android Generated Files ---
+
+# 1. Build Artifacts
+bubblewrap/build/
+bubblewrap/app/build/
+bubblewrap/*.apk
+bubblewrap/*.aab
+
+# 2. Local/Environment Configuration
+bubblewrap/local.properties
+bubblewrap/.gradle/
+
+# 3. Signing Keys (CRITICAL: Do not commit these)
+bubblewrap/*.keystore
+bubblewrap/*.jks
+
+# 4. OS & IDE noise
+bubblewrap/.idea/
+bubblewrap/*.iml
+bubblewrap/.DS_Store
+
+# --- Android / Gradle Noise ---
+.gradle/
+build/
+app/build/
+
+
+local.properties
+
+# --- Build Artifacts ---
+*.apk
+*.aab
+*.idsig
+
+# --- IDE & OS Files ---
+.idea/
+*.iml
+.DS_Store
+
+# --- SECURITY: Signing Keys ---
+# NEVER commit your keystore to source control
+*.keystore
+*.jks
+bubblewrap/.gradle/
+bubblewrap/build/
+bubblewrap/app/build/
+bubblewrap/*.keystore
+bubblewrap/*.aab
+bubblewrap/*.apk
+bubblewrap/app
+
+# --- Gradle Wrapper & Binaries ---
+bubblewrap/gradlew
+bubblewrap/gradlew.bat
+bubblewrap/gradle/
+bubblewrap/settings.gradle
+bubblewrap/manifest-checksum.txt
+bubblewrap/build.gradle
+
+# --- Assets ---
+# You generally don't need this in Git if you have the source icon elsewhere
+bubblewrap/store_icon.png
