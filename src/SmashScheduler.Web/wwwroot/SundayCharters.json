@@ -2,43 +2,43 @@
   "Players": [
     {
       "Name": "Nigel",
-      "SkillLevel": 5,
+      "SkillLevel": 2,
       "Gender": 0,
       "PlayStylePreference": 0
     },
     {
       "Name": "Ann",
-      "SkillLevel": 5,
+      "SkillLevel": 3,
       "Gender": 1,
       "PlayStylePreference": 2
     },
     {
       "Name": "Martin",
-      "SkillLevel": 5,
+      "SkillLevel": 4,
       "Gender": 0,
       "PlayStylePreference": 2
     },
     {
       "Name": "Mark",
-      "SkillLevel": 8,
+      "SkillLevel": 7,
       "Gender": 0,
       "PlayStylePreference": 2
     },
     {
       "Name": "Nam",
-      "SkillLevel": 7,
+      "SkillLevel": 5,
       "Gender": 0,
       "PlayStylePreference": 2
     },
     {
       "Name": "Gill",
-      "SkillLevel": 5,
+      "SkillLevel": 1,
       "Gender": 1,
       "PlayStylePreference": 2
     },
     {
-      "Name": "Paul",
-      "SkillLevel": 7,
+      "Name": "Paul T",
+      "SkillLevel": 5,
       "Gender": 0,
       "PlayStylePreference": 2
     },
@@ -50,13 +50,13 @@
     },
     {
       "Name": "Alex",
-      "SkillLevel": 6,
+      "SkillLevel": 5,
       "Gender": 1,
       "PlayStylePreference": 2
     },
     {
       "Name": "Kay",
-      "SkillLevel": 7,
+      "SkillLevel": 6,
       "Gender": 1,
       "PlayStylePreference": 2
     },
@@ -68,7 +68,7 @@
     },
     {
       "Name": "Tyler",
-      "SkillLevel": 7,
+      "SkillLevel": 6,
       "Gender": 0,
       "PlayStylePreference": 2
     },
@@ -80,7 +80,7 @@
     },
     {
       "Name": "Nicola H",
-      "SkillLevel": 8,
+      "SkillLevel": 7,
       "Gender": 1,
       "PlayStylePreference": 2
     },
@@ -98,7 +98,7 @@
     },
     {
       "Name": "Gareth",
-      "SkillLevel": 7,
+      "SkillLevel": 6,
       "Gender": 0,
       "PlayStylePreference": 2
     },
@@ -122,19 +122,25 @@
     },
     {
       "Name": "Eugen",
-      "SkillLevel": 7,
+      "SkillLevel": 6,
       "Gender": 0,
       "PlayStylePreference": 2
     },
     {
       "Name": "Chrissie",
-      "SkillLevel": 6,
+      "SkillLevel": 5,
       "Gender": 1,
       "PlayStylePreference": 2
     },
     {
       "Name": "Jackson",
       "SkillLevel": 7,
+      "Gender": 1,
+      "PlayStylePreference": 2
+    },
+    {
+      "Name": "Jeril",
+      "SkillLevel": 6,
       "Gender": 1,
       "PlayStylePreference": 2
     }
