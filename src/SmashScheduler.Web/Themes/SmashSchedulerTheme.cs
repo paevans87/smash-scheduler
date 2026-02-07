@@ -4,6 +4,8 @@ namespace SmashScheduler.Web.Themes;
 
 public static class SmashSchedulerTheme
 {
+    private const string OverlayOpacity = "rgba(0,0,0,0.9)";
+    
     public static MudTheme Theme => new()
     {
         PaletteLight = new PaletteLight

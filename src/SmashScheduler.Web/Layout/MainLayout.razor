@@ -1,7 +1,6 @@
 @inject IBreadcrumbService BreadcrumbService
 @inject IThemeService ThemeService
 @inject IDialogService DialogService
-@inject IJSRuntime JSRuntime
 @using SmashScheduler.Web.Services
 @using SmashScheduler.Web.Themes
 @implements IAsyncDisposable
@@ -9,7 +8,7 @@
 
 <MudThemeProvider @ref="_mudThemeProvider" Theme="SmashSchedulerTheme.Theme" IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
-<MudDialogProvider />
+<MudDialogProvider/>
 <MudSnackbarProvider />
 
 <MudLayout>

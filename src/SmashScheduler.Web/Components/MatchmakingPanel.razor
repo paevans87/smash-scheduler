@@ -34,8 +34,9 @@
                                         @if (PlayerLookup.TryGetValue(playerId, out var player))
                                         {
                                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-1">
+                                                <GenderStyledPlayerAvatar Player="player" Size="Size.Small"/>
                                                 <MudText Typo="Typo.body2">@player.Name</MudText>
-                                                <SkillLevelBadge SkillLevel="@player.SkillLevel" Size="Size.Small" />
+                                                <SkillLevelBadge SkillLevel="@player.SkillLevel" Size="Size.Small"/>
                                             </MudStack>
                                         }
                                     }
@@ -50,8 +51,9 @@
                                         @if (PlayerLookup.TryGetValue(playerId, out var player))
                                         {
                                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-1">
+                                                <GenderStyledPlayerAvatar Player="player" Size="Size.Small"/>
                                                 <MudText Typo="Typo.body2">@player.Name</MudText>
-                                                <SkillLevelBadge SkillLevel="@player.SkillLevel" Size="Size.Small" />
+                                                <SkillLevelBadge SkillLevel="@player.SkillLevel" Size="Size.Small"/>
                                             </MudStack>
                                         }
                                     }

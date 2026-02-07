@@ -75,8 +75,9 @@ else
         <RowTemplate>
             <MudTd DataLabel="Player">
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <GenderStyledPlayerAvatar Player="context" Size="Size.Small"/>
                     <MudText>@context.Name</MudText>
-                    <SkillLevelBadge SkillLevel="@context.SkillLevel" />
+                    <SkillLevelBadge SkillLevel="@context.SkillLevel"/>
                 </MudStack>
             </MudTd>
             <MudTd DataLabel="Games">@GetGamesPlayed(context.Id)</MudTd>

@@ -59,12 +59,13 @@
                                     @if (PlayerLookup.TryGetValue(playerId, out var player))
                                     {
                                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mt-1">
+                                            <GenderStyledPlayerAvatar Player="player" Size="Size.Small"/>
                                             <MudText Typo="Typo.body2">@player.Name</MudText>
-                                            <SkillLevelBadge SkillLevel="@player.SkillLevel" Size="Size.Small" />
+                                            <SkillLevelBadge SkillLevel="@player.SkillLevel" Size="Size.Small"/>
                                             <MudIconButton Icon="@Icons.Material.Filled.PersonRemove"
                                                            Size="Size.Small"
                                                            Color="Color.Error"
-                                                           OnClick="() => ExcludePlayer(playerId)" />
+                                                           OnClick="() => ExcludePlayer(playerId)"/>
                                         </MudStack>
                                     }
                                 }
@@ -79,12 +80,13 @@
                                     @if (PlayerLookup.TryGetValue(playerId, out var player))
                                     {
                                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mt-1">
+                                            <GenderStyledPlayerAvatar Player="player" Size="Size.Small"/>
                                             <MudText Typo="Typo.body2">@player.Name</MudText>
-                                            <SkillLevelBadge SkillLevel="@player.SkillLevel" Size="Size.Small" />
+                                            <SkillLevelBadge SkillLevel="@player.SkillLevel" Size="Size.Small"/>
                                             <MudIconButton Icon="@Icons.Material.Filled.PersonRemove"
                                                            Size="Size.Small"
                                                            Color="Color.Error"
-                                                           OnClick="() => ExcludePlayer(playerId)" />
+                                                           OnClick="() => ExcludePlayer(playerId)"/>
                                         </MudStack>
                                     }
                                 }
