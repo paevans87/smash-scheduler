@@ -1,9 +1,7 @@
 # Next Steps
-## 1: Match Generation
-### Auto Draft
-- [x] When no courts are available, it does not bring up the match confirmation dialogue so it never saves the draft
-- [x] The user should enter the number of games they wish to create via auto draft
-
-## 2: Session Stat Cards
-### UX/UI
-- [x] When in dark mode, the text is hard to read (green on green). The number should be white (ensuring we use mudtheme). When in light mode it should be black.
+## 1: Session Summary
+### Match History
+1. Remove the Court 1 / status badge (complete/playing)
+2. Add a trophy next to the winning teams team name; eg Team 1 - Trophy
+3. Add a highlight around the winning teams card
+4. Add some basic info: start time, end time, game length (ensuring mobile first design)
