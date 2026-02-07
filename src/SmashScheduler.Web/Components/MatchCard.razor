@@ -39,8 +39,9 @@
                 @foreach (var player in GetTeam1Players())
                 {
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-1">
+                        <GenderStyledPlayerAvatar Player="player" Size="Size.Small"/>
                         <MudText Typo="Typo.body2">@player.Name</MudText>
-                        <SkillLevelBadge SkillLevel="@player.SkillLevel" Size="Size.Small" />
+                        <SkillLevelBadge SkillLevel="@player.SkillLevel" Size="Size.Small"/>
                     </MudStack>
                 }
             </div>
@@ -52,8 +53,9 @@
                 @foreach (var player in GetTeam2Players())
                 {
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-1">
+                        <GenderStyledPlayerAvatar Player="player" Size="Size.Small"/>
                         <MudText Typo="Typo.body2">@player.Name</MudText>
-                        <SkillLevelBadge SkillLevel="@player.SkillLevel" Size="Size.Small" />
+                        <SkillLevelBadge SkillLevel="@player.SkillLevel" Size="Size.Small"/>
                     </MudStack>
                 }
             </div>

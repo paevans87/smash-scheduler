@@ -1,10 +1,11 @@
 ﻿@using SmashScheduler.Domain.Entities
 @using SmashScheduler.Web.Extensions
 
-<MudAvatar Size="Size.Medium" Variant="Variant.Filled" Style="@Player.GetGenderedAvatarCssStyle()">
+<MudAvatar Size="@Size" Variant="Variant.Filled" Style="@Player.GetGenderedAvatarCssStyle()">
     @Player.GetPlayerInitialsForAvatar()
 </MudAvatar>
 
 @code {
+    [Parameter] public required Size Size { get; set; } = Size.Large;
     [Parameter] public required Player Player { get; set; }
 }
