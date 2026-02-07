@@ -1,8 +1,19 @@
 <Fluxor.Blazor.Web.StoreInitializer />
 
-<Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+<Router AppAssembly="@typeof(App).Assembly">
     <Found Context="routeData">
         <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
+    <NotFound>
+        @* This handles the redirect to home for any client-side 404 *@
+        @{
+            NavigationManager.NavigateTo("/", forceLoad: false);
+        }
+    </NotFound>
 </Router>
+
+@code {
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = default!;
+}
