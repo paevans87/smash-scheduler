@@ -13,15 +13,33 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { priceId, clubName } = body as {
-    priceId: string;
+  const { clubName, priceId } = body as {
     clubName: string;
+    priceId: string;
   };
 
-  if (!priceId || !clubName?.trim()) {
+  if (!clubName?.trim() || !priceId) {
     return NextResponse.json(
-      { error: "Missing priceId or clubName" },
+      { error: "Missing clubName or priceId" },
       { status: 400 }
+    );
+  }
+
+  const { data: existingPro } = await supabase
+    .from("subscriptions")
+    .select("id, club_id!inner(id), club_organisers:club_id(user_id)")
+    .eq("plan_type", "pro")
+    .limit(1);
+
+  const hasUsedTrial = existingPro?.some((sub) => {
+    const organisers = sub.club_organisers as unknown as { user_id: string }[];
+    return organisers?.some((org) => org.user_id === user.id);
+  });
+
+  if (hasUsedTrial) {
+    return NextResponse.json(
+      { error: "You have already used your free trial" },
+      { status: 409 }
     );
   }
 
@@ -36,21 +54,22 @@ export async function POST(request: NextRequest) {
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
-    payment_method_types: ["card"],
-    line_items: [{ price: priceId, quantity: 1 }],
     customer: customer.id,
+    payment_method_collection: "if_required",
     subscription_data: {
+      trial_period_days: 14,
       metadata: {
         supabase_user_id: user.id,
         club_name: clubName.trim(),
       },
     },
+    line_items: [{ price: priceId, quantity: 1 }],
+    success_url: `${origin}/dashboard?trial=started`,
+    cancel_url: `${origin}/pricing`,
     metadata: {
       supabase_user_id: user.id,
       club_name: clubName.trim(),
     },
-    success_url: `${origin}/api/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/pricing`,
   });
 
   return NextResponse.json({ url: session.url });

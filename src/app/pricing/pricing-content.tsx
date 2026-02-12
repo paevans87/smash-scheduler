@@ -47,7 +47,7 @@ export default function PricingContent({
   const proPricingAvailable =
     !stripeFetchError && proPrices.length > 0 && selectedPrice;
 
-  async function handleSelectFreeOrTrial(planType: string, status: string) {
+  async function handleSelectFree() {
     setError("");
 
     if (!clubName.trim()) {
@@ -62,8 +62,8 @@ export default function PricingContent({
       "create_club_with_subscription",
       {
         p_club_name: clubName.trim(),
-        p_plan_type: planType,
-        p_status: status,
+        p_plan_type: "free",
+        p_status: "active",
       }
     );
 
@@ -75,6 +75,43 @@ export default function PricingContent({
 
     router.push("/dashboard");
     router.refresh();
+  }
+
+  async function handleStartTrial() {
+    setError("");
+
+    if (!clubName.trim()) {
+      setError("Please enter a club name.");
+      return;
+    }
+
+    if (!monthlyPrice) return;
+
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/checkout/trial", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clubName: clubName.trim(),
+          priceId: monthlyPrice.id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error ?? "Failed to start trial");
+        setLoading(false);
+        return;
+      }
+
+      window.location.href = data.url;
+    } catch {
+      setError("Something went wrong. Please try again.");
+      setLoading(false);
+    }
   }
 
   async function handleSelectPro() {
@@ -150,7 +187,7 @@ export default function PricingContent({
             <Button
               className="w-full"
               disabled={loading}
-              onClick={() => handleSelectFreeOrTrial("free", "active")}
+              onClick={handleSelectFree}
             >
               {loading ? "Creating\u2026" : "Select Free"}
             </Button>
@@ -224,8 +261,8 @@ export default function PricingContent({
             </ul>
             <Button
               className="w-full"
-              disabled={loading}
-              onClick={() => handleSelectFreeOrTrial("pro", "trialling")}
+              disabled={!proPricingAvailable || loading}
+              onClick={handleStartTrial}
             >
               {loading ? "Creating\u2026" : "Start Free Trial"}
             </Button>
