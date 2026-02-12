@@ -1,7 +1,22 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(dotnet test:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd multi-tenant organiser support via club_organisers join table\n\nReplace single-owner clubs.user_id with a many-to-many club_organisers\ntable so multiple authenticated users can manage the same club. Update\nall RLS policies to check membership through club_organisers.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(find:*)",
+      "Bash(xargs -I {} sh -c 'echo \"\"\"\"=== {} ===\"\"\"\" && ls -1 {}')",
+      "Bash(xargs:*)",
+      "Bash(ls:*)",
+      "Bash(git mv:*)",
+      "Bash(npx create-next-app@latest:*)",
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest init:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "WebSearch",
+      "WebFetch(domain:supabase.com)",
+      "Bash(git status:*)"
     ]
   }
 }
