@@ -1,4 +1,4 @@
-CREATE INDEX idx_clubs_user_id ON clubs(user_id);
+CREATE INDEX idx_club_organisers_user_id ON club_organisers(user_id);
 
 CREATE INDEX idx_players_club_id ON players(club_id);
 

@@ -6,31 +6,36 @@ ALTER TABLE session_players ENABLE ROW LEVEL SECURITY;
 ALTER TABLE matches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE match_players ENABLE ROW LEVEL SECURITY;
 ALTER TABLE player_blacklists ENABLE ROW LEVEL SECURITY;
+ALTER TABLE club_organisers ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY clubs_policy ON clubs
     FOR ALL
     TO authenticated
-    USING (user_id = auth.uid())
-    WITH CHECK (user_id = auth.uid());
+    USING (
+        id IN (SELECT club_id FROM club_organisers WHERE user_id = auth.uid())
+    )
+    WITH CHECK (
+        id IN (SELECT club_id FROM club_organisers WHERE user_id = auth.uid())
+    );
 
 CREATE POLICY players_policy ON players
     FOR ALL
     TO authenticated
     USING (
-        club_id IN (SELECT id FROM clubs WHERE user_id = auth.uid())
+        club_id IN (SELECT club_id FROM club_organisers WHERE user_id = auth.uid())
     )
     WITH CHECK (
-        club_id IN (SELECT id FROM clubs WHERE user_id = auth.uid())
+        club_id IN (SELECT club_id FROM club_organisers WHERE user_id = auth.uid())
     );
 
 CREATE POLICY sessions_policy ON sessions
     FOR ALL
     TO authenticated
     USING (
-        club_id IN (SELECT id FROM clubs WHERE user_id = auth.uid())
+        club_id IN (SELECT club_id FROM club_organisers WHERE user_id = auth.uid())
     )
     WITH CHECK (
-        club_id IN (SELECT id FROM clubs WHERE user_id = auth.uid())
+        club_id IN (SELECT club_id FROM club_organisers WHERE user_id = auth.uid())
     );
 
 CREATE POLICY session_court_labels_policy ON session_court_labels
@@ -39,15 +44,15 @@ CREATE POLICY session_court_labels_policy ON session_court_labels
     USING (
         session_id IN (
             SELECT s.id FROM sessions s
-            JOIN clubs c ON c.id = s.club_id
-            WHERE c.user_id = auth.uid()
+            JOIN club_organisers co ON co.club_id = s.club_id
+            WHERE co.user_id = auth.uid()
         )
     )
     WITH CHECK (
         session_id IN (
             SELECT s.id FROM sessions s
-            JOIN clubs c ON c.id = s.club_id
-            WHERE c.user_id = auth.uid()
+            JOIN club_organisers co ON co.club_id = s.club_id
+            WHERE co.user_id = auth.uid()
         )
     );
 
@@ -57,15 +62,15 @@ CREATE POLICY session_players_policy ON session_players
     USING (
         session_id IN (
             SELECT s.id FROM sessions s
-            JOIN clubs c ON c.id = s.club_id
-            WHERE c.user_id = auth.uid()
+            JOIN club_organisers co ON co.club_id = s.club_id
+            WHERE co.user_id = auth.uid()
         )
     )
     WITH CHECK (
         session_id IN (
             SELECT s.id FROM sessions s
-            JOIN clubs c ON c.id = s.club_id
-            WHERE c.user_id = auth.uid()
+            JOIN club_organisers co ON co.club_id = s.club_id
+            WHERE co.user_id = auth.uid()
         )
     );
 
@@ -75,15 +80,15 @@ CREATE POLICY matches_policy ON matches
     USING (
         session_id IN (
             SELECT s.id FROM sessions s
-            JOIN clubs c ON c.id = s.club_id
-            WHERE c.user_id = auth.uid()
+            JOIN club_organisers co ON co.club_id = s.club_id
+            WHERE co.user_id = auth.uid()
         )
     )
     WITH CHECK (
         session_id IN (
             SELECT s.id FROM sessions s
-            JOIN clubs c ON c.id = s.club_id
-            WHERE c.user_id = auth.uid()
+            JOIN club_organisers co ON co.club_id = s.club_id
+            WHERE co.user_id = auth.uid()
         )
     );
 
@@ -94,16 +99,16 @@ CREATE POLICY match_players_policy ON match_players
         match_id IN (
             SELECT m.id FROM matches m
             JOIN sessions s ON s.id = m.session_id
-            JOIN clubs c ON c.id = s.club_id
-            WHERE c.user_id = auth.uid()
+            JOIN club_organisers co ON co.club_id = s.club_id
+            WHERE co.user_id = auth.uid()
         )
     )
     WITH CHECK (
         match_id IN (
             SELECT m.id FROM matches m
             JOIN sessions s ON s.id = m.session_id
-            JOIN clubs c ON c.id = s.club_id
-            WHERE c.user_id = auth.uid()
+            JOIN club_organisers co ON co.club_id = s.club_id
+            WHERE co.user_id = auth.uid()
         )
     );
 
@@ -113,14 +118,20 @@ CREATE POLICY player_blacklists_policy ON player_blacklists
     USING (
         player_id IN (
             SELECT p.id FROM players p
-            JOIN clubs c ON c.id = p.club_id
-            WHERE c.user_id = auth.uid()
+            JOIN club_organisers co ON co.club_id = p.club_id
+            WHERE co.user_id = auth.uid()
         )
     )
     WITH CHECK (
         player_id IN (
             SELECT p.id FROM players p
-            JOIN clubs c ON c.id = p.club_id
-            WHERE c.user_id = auth.uid()
+            JOIN club_organisers co ON co.club_id = p.club_id
+            WHERE co.user_id = auth.uid()
         )
     );
+
+CREATE POLICY club_organisers_policy ON club_organisers
+    FOR ALL
+    TO authenticated
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());

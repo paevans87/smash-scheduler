@@ -1,6 +1,5 @@
 CREATE TABLE clubs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     default_court_count INT NOT NULL DEFAULT 1,
     game_type SMALLINT NOT NULL DEFAULT 1,
@@ -113,4 +112,12 @@ CREATE TABLE player_blacklists (
     CONSTRAINT chk_player_blacklists_type CHECK (blacklist_type IN (0, 1)),
     CONSTRAINT chk_player_blacklists_no_self CHECK (player_id != blacklisted_player_id),
     CONSTRAINT uq_player_blacklists UNIQUE (player_id, blacklisted_player_id, blacklist_type)
+);
+
+CREATE TABLE club_organisers (
+    club_id UUID NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    PRIMARY KEY (club_id, user_id)
 );
