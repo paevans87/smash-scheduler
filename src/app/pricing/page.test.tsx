@@ -68,7 +68,7 @@ describe("PricingPage", () => {
       p_plan_type: "free",
       p_status: "active",
     });
-    expect(mockPush).toHaveBeenCalledWith("/dashboard");
+    expect(mockPush).toHaveBeenCalledWith("/clubs");
     expect(mockRefresh).toHaveBeenCalled();
   });
 
@@ -88,7 +88,7 @@ describe("PricingPage", () => {
       p_plan_type: "pro",
       p_status: "trialling",
     });
-    expect(mockPush).toHaveBeenCalledWith("/dashboard");
+    expect(mockPush).toHaveBeenCalledWith("/clubs");
   });
 
   it("displays RPC error message", async () => {

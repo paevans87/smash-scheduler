@@ -80,7 +80,7 @@ function PendingContent() {
 
       if (hasActiveSubscription) {
         cleanup();
-        router.push("/dashboard");
+        router.push("/clubs");
       }
     };
 
@@ -97,7 +97,7 @@ function PendingContent() {
 
         if (response.ok) {
           cleanup();
-          router.push("/dashboard");
+          router.push("/clubs");
           return;
         }
       } catch {

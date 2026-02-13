@@ -73,7 +73,7 @@ export default function PricingContent({
       return;
     }
 
-    router.push("/dashboard");
+    router.push("/clubs");
     router.refresh();
   }
 
