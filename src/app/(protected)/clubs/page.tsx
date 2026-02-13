@@ -8,14 +8,21 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+type Subscription = { status: string; plan_type: string };
+
 type ClubRow = {
   club_id: string;
   clubs: {
     id: string;
     name: string;
-    subscriptions: { status: string; plan_type: string }[];
+    subscriptions: Subscription | Subscription[] | null;
   };
 };
+
+function toArray(subs: Subscription | Subscription[] | null): Subscription[] {
+  if (!subs) return [];
+  return Array.isArray(subs) ? subs : [subs];
+}
 
 function subscriptionLabel(status: string, planType: string): string {
   if (status === "trialling") return "Trial";
@@ -41,7 +48,7 @@ export default async function ClubsPage() {
   const clubs = (data as unknown as ClubRow[]) ?? [];
 
   const activeClubs = clubs.filter((row) =>
-    row.clubs.subscriptions.some(
+    toArray(row.clubs.subscriptions).some(
       (s) => s.status === "active" || s.status === "trialling"
     )
   );
@@ -59,7 +66,7 @@ export default async function ClubsPage() {
       <h1 className="text-3xl font-bold">Select a Club</h1>
       <div className="grid w-full max-w-2xl gap-4 sm:grid-cols-2">
         {activeClubs.map((row) => {
-          const activeSub = row.clubs.subscriptions.find(
+          const activeSub = toArray(row.clubs.subscriptions).find(
             (s) => s.status === "active" || s.status === "trialling"
           );
 
