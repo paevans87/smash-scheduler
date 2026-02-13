@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       },
     },
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${origin}/dashboard?trial=started`,
+    success_url: `${origin}/checkout/pending?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/pricing`,
     metadata: {
       supabase_user_id: user.id,

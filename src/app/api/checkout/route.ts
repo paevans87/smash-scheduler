@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       supabase_user_id: user.id,
       club_name: clubName.trim(),
     },
-    success_url: `${origin}/api/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+    success_url: `${origin}/checkout/pending?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/pricing`,
   });
 
