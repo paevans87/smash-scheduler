@@ -16,6 +16,12 @@ const POLL_INTERVAL = 2000;
 const TIMEOUT = 30000;
 
 type PendingState = "loading" | "error";
+type Subscription = { status: string };
+
+function toArray(subs: Subscription | Subscription[] | null | undefined): Subscription[] {
+  if (!subs) return [];
+  return Array.isArray(subs) ? subs : [subs];
+}
 
 function PendingContent() {
   const router = useRouter();
@@ -67,14 +73,14 @@ function PendingContent() {
       const club = data?.[0];
       if (!club) return;
 
-      const subscriptions = (
+      const rawSubs = (
         club.clubs as unknown as {
           id: string;
-          subscriptions: { status: string }[];
+          subscriptions: Subscription | Subscription[] | null;
         }
       )?.subscriptions;
 
-      const hasActiveSubscription = subscriptions?.some(
+      const hasActiveSubscription = toArray(rawSubs).some(
         (s) => s.status === "active" || s.status === "trialling"
       );
 
