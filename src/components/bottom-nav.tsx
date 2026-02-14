@@ -7,19 +7,19 @@ import { cn } from "@/lib/utils";
 import { ProfileMenu } from "@/components/profile-menu";
 
 type BottomNavProps = {
-  clubId: string;
+  clubSlug: string;
   userEmail: string;
 };
 
-export function BottomNav({ clubId, userEmail }: BottomNavProps) {
+export function BottomNav({ clubSlug, userEmail }: BottomNavProps) {
   const pathname = usePathname();
 
   const navItems = [
     {
       label: "Dashboard",
       icon: LayoutDashboard,
-      href: `/clubs/${clubId}`,
-      isActive: pathname === `/clubs/${clubId}`,
+      href: `/clubs/${clubSlug}`,
+      isActive: pathname === `/clubs/${clubSlug}`,
     },
     {
       label: "Sessions",

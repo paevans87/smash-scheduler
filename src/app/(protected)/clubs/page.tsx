@@ -15,6 +15,7 @@ type ClubRow = {
   clubs: {
     id: string;
     name: string;
+    slug: string;
     subscriptions: Subscription | Subscription[] | null;
   };
 };
@@ -42,7 +43,7 @@ export default async function ClubsPage() {
 
   const { data } = await supabase
     .from("club_organisers")
-    .select("club_id, clubs:club_id(id, name, subscriptions(status, plan_type))")
+    .select("club_id, clubs:club_id(id, name, slug, subscriptions(status, plan_type))")
     .eq("user_id", user.id);
 
   const clubs = (data as unknown as ClubRow[]) ?? [];
@@ -58,7 +59,7 @@ export default async function ClubsPage() {
   }
 
   if (activeClubs.length === 1) {
-    redirect(`/clubs/${activeClubs[0].club_id}`);
+    redirect(`/clubs/${activeClubs[0].clubs.slug}`);
   }
 
   return (
@@ -71,7 +72,7 @@ export default async function ClubsPage() {
           );
 
           return (
-            <Link key={row.club_id} href={`/clubs/${row.club_id}`}>
+            <Link key={row.club_id} href={`/clubs/${row.clubs.slug}`}>
               <Card className="transition-colors hover:border-primary">
                 <CardHeader>
                   <CardTitle>{row.clubs.name}</CardTitle>

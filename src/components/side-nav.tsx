@@ -20,13 +20,14 @@ import {
 } from "@/components/ui/tooltip";
 
 type SideNavProps = {
-  clubId: string;
+  clubSlug: string;
+  clubName: string;
   userEmail: string;
 };
 
 const STORAGE_KEY = "sidenav-collapsed";
 
-export function SideNav({ clubId, userEmail }: SideNavProps) {
+export function SideNav({ clubSlug, clubName, userEmail }: SideNavProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -46,8 +47,8 @@ export function SideNav({ clubId, userEmail }: SideNavProps) {
     {
       label: "Dashboard",
       icon: LayoutDashboard,
-      href: `/clubs/${clubId}`,
-      isActive: pathname === `/clubs/${clubId}`,
+      href: `/clubs/${clubSlug}`,
+      isActive: pathname === `/clubs/${clubSlug}`,
     },
     {
       label: "Sessions",
@@ -73,7 +74,7 @@ export function SideNav({ clubId, userEmail }: SideNavProps) {
     >
       <div className={cn("flex h-14 items-center border-b px-4", collapsed && "justify-center px-0")}>
         <Link
-          href={`/clubs/${clubId}`}
+          href={`/clubs/${clubSlug}`}
           className="flex items-center gap-2 font-semibold"
         >
           <Image
@@ -83,7 +84,7 @@ export function SideNav({ clubId, userEmail }: SideNavProps) {
             height={32}
             className="shrink-0"
           />
-          {!collapsed && <span className="truncate">SmashScheduler</span>}
+          {!collapsed && <span className="truncate">{clubName}</span>}
         </Link>
       </div>
 
