@@ -1,23 +1,17 @@
-# Club 
-## FAB
-While in a club context, eg `/clubs/{club-slug}` the FAB should have the following options: 
-Add new Player
-Add new Session
+# Stripe Integration
+I have created a second Product for "Club Lite" which is the free version. We should use this when creating clubs so that we always have our users on stripe, etc. - no card info required for this.
 
-## Player Management
-Shows a list of players in the club. All players should be listed with a coloured avatar (coloured based on gender) with their initials along with a second avatar showing their skill level (this should be coloured based on the value 0-10).
+## Multiple Clubs 
+If I create a second club, I get re-routed automatically to the existing club.
 
-A CTA to add a new player.
+### C:\Git\smash-scheduler\src\app\(protected)\clubs\page.tsx
+Lets remove the auto-direct to the club page if club count === 1 and change things around a little. 
 
-There should be an edit icon for each player taking them to the edit player page.
+1. The page should show a header + branding
+2. We should be able to sign out
+3. We should be able to go back to home page
 
-There should also be a delete icon for each player (with confirmation).
 
-### Edit Player
-Name
-Skill Level (0-10) - default should be 5
-Gender (Female/male)
-Play style preference: Open/no preference (default), mix (male+female mix), level (male+male or female+female)
-
-partner blacklist - add another player to the partner blacklist used for matchmaking
-opponent blacklist - add another player to the opponent blacklist used for matchmaking
+## C:\Git\smash-scheduler\src\components\side-nav.tsx
+1. Add an icon next to this to represent "switch club" which directs us to `/clubs/`
+2. users email should be clickable also to bring up the context menu 

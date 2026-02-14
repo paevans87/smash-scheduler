@@ -55,11 +55,11 @@ export default async function ClubsPage() {
   );
 
   if (activeClubs.length === 0) {
-    redirect("/onboarding");
+    //redirect("/onboarding");
   }
 
   if (activeClubs.length === 1) {
-    redirect(`/clubs/${activeClubs[0].clubs.slug}`);
+    //redirect(`/clubs/${activeClubs[0].clubs.slug}`);
   }
 
   return (

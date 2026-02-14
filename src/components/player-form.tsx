@@ -34,8 +34,7 @@ type PlayerFormProps = {
 
 const genderOptions = [
   { value: "0", label: "Male" },
-  { value: "1", label: "Female" },
-  { value: "2", label: "Other" },
+  { value: "1", label: "Female" }
 ];
 
 const playStyleOptions = [
