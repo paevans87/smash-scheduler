@@ -1,6 +1,3 @@
-# Stripe Integration
-I have created a second Product for "Club Lite" which is the free version. We should use this when creating clubs so that we always have our users on stripe, etc. - no card info required for this.
-
 ## Multiple Clubs 
 If I create a second club, I get re-routed automatically to the existing club.
 I notice I get a 500 on `/api/checkout/fulfil` prior to this happening
