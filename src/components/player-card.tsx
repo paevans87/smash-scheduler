@@ -11,6 +11,7 @@ type PlayerCardProps = {
   skillLevel: number;
   gender: number;
   clubSlug: string;
+  onDeleted?: () => void;
 };
 
 const genderColours: Record<number, string> = {
@@ -35,7 +36,7 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-export function PlayerCard({ id, name, skillLevel, gender, clubSlug }: PlayerCardProps) {
+export function PlayerCard({ id, name, skillLevel, gender, clubSlug, onDeleted }: PlayerCardProps) {
   return (
     <div className="flex items-center gap-3 rounded-lg border bg-card p-3">
       <div
@@ -61,7 +62,7 @@ export function PlayerCard({ id, name, skillLevel, gender, clubSlug }: PlayerCar
             <Pencil className="size-4" />
           </Link>
         </Button>
-        <DeletePlayerDialog playerId={id} playerName={name} />
+        <DeletePlayerDialog playerId={id} playerName={name} onDeleted={onDeleted} />
       </div>
     </div>
   );

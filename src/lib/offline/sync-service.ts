@@ -20,7 +20,7 @@ export async function syncClubData(
       .eq("club_id", clubId),
     supabase
       .from("players")
-      .select("id, club_id, name, skill_level")
+      .select("id, club_id, name, skill_level, gender, play_style_preference")
       .eq("club_id", clubId),
     supabase
       .from("matches")
@@ -119,6 +119,19 @@ export async function getSessionsFromCache(clubId: string) {
 export async function getPlayersFromCache(clubId: string) {
   const db = await getDb();
   return db.getAllFromIndex("players", "by-club", clubId);
+}
+
+export async function clearPlayersCache(clubId: string) {
+  const db = await getDb();
+  const tx = db.transaction("players", "readwrite");
+  const store = tx.objectStore("players");
+  const index = store.index("by-club");
+  let cursor = await index.openCursor(clubId);
+  while (cursor) {
+    await cursor.delete();
+    cursor = await cursor.continue();
+  }
+  await tx.done;
 }
 
 export async function getMatchesFromCache(sessionId: string) {

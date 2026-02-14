@@ -14,6 +14,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
+import { useOnlineStatus } from "@/lib/offline/online-status-provider";
+import { enqueuePendingChange } from "@/lib/offline/pending-changes";
+import { getDb } from "@/lib/offline/db";
 
 type Player = {
   id: string;
@@ -43,6 +46,7 @@ const playStyleOptions = [
 
 export function PlayerForm({ clubId, clubSlug, player }: PlayerFormProps) {
   const router = useRouter();
+  const { isOnline } = useOnlineStatus();
   const [name, setName] = useState(player?.name ?? "");
   const [skillLevel, setSkillLevel] = useState(player?.skill_level ?? 5);
   const [gender, setGender] = useState(String(player?.gender ?? 0));
@@ -61,7 +65,6 @@ export function PlayerForm({ clubId, clubSlug, player }: PlayerFormProps) {
     setSaving(true);
     setError(null);
 
-    const supabase = createClient();
     const payload = {
       name: name.trim(),
       skill_level: skillLevel,
@@ -69,14 +72,44 @@ export function PlayerForm({ clubId, clubSlug, player }: PlayerFormProps) {
       play_style_preference: Number(playStyle),
     };
 
-    const result = player
-      ? await supabase.from("players").update(payload).eq("id", player.id)
-      : await supabase.from("players").insert({ ...payload, club_id: clubId });
+    if (isOnline) {
+      const supabase = createClient();
+      const result = player
+        ? await supabase.from("players").update(payload).eq("id", player.id)
+        : await supabase.from("players").insert({ ...payload, club_id: clubId });
 
-    if (result.error) {
-      setError(result.error.message);
-      setSaving(false);
-      return;
+      if (result.error) {
+        setError(result.error.message);
+        setSaving(false);
+        return;
+      }
+    } else {
+      const db = await getDb();
+
+      if (player) {
+        await db.put("players", {
+          id: player.id,
+          club_id: clubId,
+          ...payload,
+        });
+        await enqueuePendingChange({
+          table: "players",
+          operation: "update",
+          payload: { id: player.id, ...payload },
+        });
+      } else {
+        const id = crypto.randomUUID();
+        await db.put("players", {
+          id,
+          club_id: clubId,
+          ...payload,
+        });
+        await enqueuePendingChange({
+          table: "players",
+          operation: "insert",
+          payload: { id, club_id: clubId, ...payload },
+        });
+      }
     }
 
     router.push(`/clubs/${clubSlug}/players`);
