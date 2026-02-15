@@ -18,6 +18,8 @@ import {
   ChevronRight,
   Check,
 } from "lucide-react";
+import { fetchProPrices, formatPrice } from "@/lib/stripe-prices";
+import { config } from "@/lib/config";
 
 const features = [
   {
@@ -73,7 +75,24 @@ const pricingFeatures = {
   ],
 };
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  let monthlyPrice: { unitAmount: number; currency: string } | null = null;
+  let yearlyPrice: { unitAmount: number; currency: string } | null = null;
+
+  try {
+    const prices = await fetchProPrices();
+    monthlyPrice = prices.find((p) => p.interval === "month") || null;
+    yearlyPrice = prices.find((p) => p.interval === "year") || null;
+  } catch {
+    // Fallback: prices will be null, UI will handle gracefully
+  }
+
+  const proPrice = monthlyPrice || yearlyPrice;
+  const displayPrice = proPrice
+    ? formatPrice(proPrice.unitAmount, proPrice.currency)
+    : null;
+  const priceInterval = monthlyPrice ? "/month" : yearlyPrice ? "/year" : "/month";
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-green-50/30">
       {/* Navigation */}
@@ -98,10 +117,10 @@ export default function LandingPage() {
           </nav>
           <div className="flex items-center gap-3">
             <Button variant="ghost" asChild>
-              <Link href="https://app.smashscheduler.com/login">Sign In</Link>
+              <Link href={`${config.appUrl}/login`}>Sign In</Link>
             </Button>
             <Button asChild>
-              <Link href="https://app.smashscheduler.com/pricing">Get Started</Link>
+              <Link href={`${config.appUrl}/pricing`}>Get Started</Link>
             </Button>
           </div>
         </div>
@@ -124,7 +143,7 @@ export default function LandingPage() {
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                 <Button size="lg" asChild>
-                  <Link href="https://app.smashscheduler.com/pricing">
+                  <Link href={`${config.appUrl}/pricing`}>
                     Start Free Trial
                     <ChevronRight className="ml-2 size-4" />
                   </Link>
@@ -306,7 +325,7 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 <Button variant="outline" className="w-full" asChild>
-                  <Link href="https://app.smashscheduler.com/pricing">Get Started Free</Link>
+                  <Link href={`${config.appUrl}/pricing`}>Get Started Free</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -319,8 +338,14 @@ export default function LandingPage() {
               <CardHeader className="text-center pb-8">
                 <CardTitle className="text-2xl">Pro</CardTitle>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold">£9</span>
-                  <span className="text-muted-foreground">/month</span>
+                  {displayPrice ? (
+                    <>
+                      <span className="text-4xl font-bold">{displayPrice}</span>
+                      <span className="text-muted-foreground">{priceInterval}</span>
+                    </>
+                  ) : (
+                    <span className="text-4xl font-bold text-muted-foreground">Contact us</span>
+                  )}
                 </div>
                 <CardDescription className="mt-2">
                   For serious clubs that want the best experience
@@ -336,7 +361,7 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 <Button className="w-full" asChild>
-                  <Link href="https://app.smashscheduler.com/pricing">Start Free Trial</Link>
+                  <Link href={`${config.appUrl}/pricing`}>Start Free Trial</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -355,10 +380,10 @@ export default function LandingPage() {
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" variant="secondary" asChild>
-              <Link href="https://app.smashscheduler.com/pricing">Start Free Trial</Link>
+              <Link href={`${config.appUrl}/pricing`}>Start Free Trial</Link>
             </Button>
             <Button size="lg" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground hover:text-primary" asChild>
-              <Link href="https://app.smashscheduler.com/login">Sign In</Link>
+              <Link href={`${config.appUrl}/login`}>Sign In</Link>
             </Button>
           </div>
         </div>
