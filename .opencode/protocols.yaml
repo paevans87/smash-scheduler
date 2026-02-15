@@ -1,0 +1,13 @@
+protocols:
+  - id: "doc-maintenance-sync"
+    event: "post-execution"
+    trigger_on: ["file_change", "code_update"]
+    action: "prompt_user"
+    message: "If your changes are substantial, please update `/docs/memory/` files with the relevant changes."
+    enforce: true
+  - id: "alignment-check"
+    stage: "pre-execution"
+    action: "read_context"
+    target_dir: "/docs/memory/"
+    rule: "Compare proposed changes against existing architectural patterns in memory files."
+    enforce: true
