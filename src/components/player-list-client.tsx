@@ -98,7 +98,7 @@ export function PlayerListClient({ clubId, clubSlug, planType, playerCount }: Pl
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div className="space-y-2">
             <Label>Min Skill</Label>
             <Slider min={1} max={10} value={[minSkill]} onValueChange={([v]) => setMinSkill(v)} />
             <div className="text-xs text-muted-foreground mt-1">Current: {minSkill}</div>

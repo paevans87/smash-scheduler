@@ -1,15 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { enqueuePendingChange } from "@/lib/offline/pending-changes";
 import { createClient } from "@/lib/supabase/client";
 import { useOnlineStatus } from "@/lib/offline/online-status-provider";
 import { getDb } from "@/lib/offline/db";
 import { PlayerForm } from "@/components/player-form";
 import { BlacklistManager } from "@/components/blacklist-manager";
+import { Button } from "@/components/ui/button";
 
 type Player = {
   id: string;
-  name: string;
+  name?: string;
   skill_level: number;
   gender: number;
   play_style_preference: number;
@@ -27,14 +30,21 @@ type PlayerEditClientProps = {
   playerId: string;
 };
 
+const PLAYER_FORM_ID = "player-edit-form";
+
 export function PlayerEditClient({ clubId, clubSlug, playerId }: PlayerEditClientProps) {
   const { isOnline } = useOnlineStatus();
+  const router = useRouter();
   const [player, setPlayer] = useState<Player | null>(null);
   const [partnerBlacklist, setPartnerBlacklist] = useState<BlacklistEntry[]>([]);
   const [opponentBlacklist, setOpponentBlacklist] = useState<BlacklistEntry[]>([]);
   const [otherPlayers, setOtherPlayers] = useState<{ id: string; name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [pendingBlacklistChanges, setPendingBlacklistChanges] = useState<{
+    adds: Array<{ id: string; type: number }>;
+    removals: string[];
+  }>({ adds: [], removals: [] });
 
   useEffect(() => {
     let cancelled = false;
@@ -91,6 +101,7 @@ export function PlayerEditClient({ clubId, clubSlug, playerId }: PlayerEditClien
               blacklisted_player_name: (b.blacklisted as unknown as { name: string })?.name ?? "Unknown",
             }))
         );
+        setPendingBlacklistChanges({ adds: [], removals: [] });
       } else {
         const db = await getDb();
         const cached = await db.get("players", playerId);
@@ -118,6 +129,42 @@ export function PlayerEditClient({ clubId, clubSlug, playerId }: PlayerEditClien
     };
   }, [clubId, playerId, isOnline]);
 
+  const handleSaveBlacklist = useCallback(async () => {
+    const changes = pendingBlacklistChanges;
+    if (changes.adds.length === 0 && changes.removals.length === 0) return;
+
+    if (isOnline && player?.id) {
+      const supabase = createClient();
+      for (const add of changes.adds) {
+        await supabase.from("player_blacklists").insert({
+          player_id: player.id,
+          blacklisted_player_id: add.id,
+          blacklist_type: add.type,
+        });
+      }
+      for (const rem of changes.removals) {
+        await supabase.from("player_blacklists").delete().eq("id", rem);
+      }
+    } else if (player?.id) {
+      for (const add of changes.adds) {
+        await enqueuePendingChange({
+          table: "player_blacklists",
+          operation: "insert",
+          payload: { player_id: player.id, blacklisted_player_id: add.id, blacklist_type: add.type },
+        } as any);
+      }
+      for (const rem of changes.removals) {
+        await enqueuePendingChange({
+          table: "player_blacklists",
+          operation: "delete",
+          payload: { id: rem },
+        } as any);
+      }
+    }
+
+    setPendingBlacklistChanges({ adds: [], removals: [] });
+  }, [pendingBlacklistChanges, isOnline, player?.id]);
+
   if (isLoading) {
     return (
       <div className="space-y-6 px-4 py-6 md:px-6">
@@ -139,19 +186,30 @@ export function PlayerEditClient({ clubId, clubSlug, playerId }: PlayerEditClien
   return (
     <div className="space-y-6 px-4 py-6 md:px-6">
       <h1 className="text-3xl font-bold">Edit Player</h1>
-      <PlayerForm clubId={clubId} clubSlug={clubSlug} player={player} />
+      <PlayerForm
+        clubId={clubId}
+        clubSlug={clubSlug}
+        player={player}
+        onSave={handleSaveBlacklist}
+        hideActions
+        formId={PLAYER_FORM_ID}
+      />
       {isOnline ? (
         <BlacklistManager
-          playerId={player.id}
           partnerBlacklist={partnerBlacklist}
           opponentBlacklist={opponentBlacklist}
           otherPlayers={otherPlayers}
+          onPendingChange={setPendingBlacklistChanges}
         />
       ) : (
         <p className="text-sm text-muted-foreground italic">
           Blacklist management is unavailable offline.
         </p>
       )}
+      <div className="flex gap-3">
+        <Button type="submit" form={PLAYER_FORM_ID}>Update Player</Button>
+        <Button type="button" variant="outline" onClick={() => router.push(`/clubs/${clubSlug}/players`)}>Cancel</Button>
+      </div>
     </div>
   );
 }
