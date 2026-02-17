@@ -45,6 +45,11 @@ export default async function ClubLayout({
     redirect("/clubs");
   }
 
+  const { count: userClubCount } = await supabase
+    .from("club_organisers")
+    .select("club_id", { count: "exact" })
+    .eq("user_id", user.id);
+
   const { data: subscription } = await supabase
     .from("subscriptions")
     .select("id, status")
@@ -62,7 +67,12 @@ export default async function ClubLayout({
 
   return (
     <div className="flex min-h-screen">
-      <SideNav clubSlug={clubSlug} clubName={club.name} userEmail={user.email!} />
+      <SideNav
+        clubSlug={clubSlug}
+        clubName={club.name}
+        userEmail={user.email!}
+        showSwitchClub={(userClubCount ?? 0) > 1}
+      />
       <div className="flex flex-1 flex-col md:min-h-screen">
         <div className="border-b px-4 py-3 md:px-6">
           <ClubBreadcrumbs clubSlug={clubSlug} clubName={club.name} />

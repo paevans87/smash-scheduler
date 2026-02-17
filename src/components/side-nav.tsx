@@ -25,11 +25,17 @@ type SideNavProps = {
   clubSlug: string;
   clubName: string;
   userEmail: string;
+  showSwitchClub: boolean;
 };
 
 const STORAGE_KEY = "sidenav-collapsed";
 
-export function SideNav({ clubSlug, clubName, userEmail }: SideNavProps) {
+export function SideNav({
+  clubSlug,
+  clubName,
+  userEmail,
+  showSwitchClub,
+}: SideNavProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -140,15 +146,19 @@ export function SideNav({ clubSlug, clubName, userEmail }: SideNavProps) {
           return linkContent;
         })}
 
-        <div className="my-2 border-t" />
+        {showSwitchClub && (
+          <>
+            <div className="my-2 border-t" />
 
-        {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>{switchClubContent}</TooltipTrigger>
-            <TooltipContent side="right">Switch Club</TooltipContent>
-          </Tooltip>
-        ) : (
-          switchClubContent
+            {collapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>{switchClubContent}</TooltipTrigger>
+                <TooltipContent side="right">Switch Club</TooltipContent>
+              </Tooltip>
+            ) : (
+              switchClubContent
+            )}
+          </>
         )}
       </nav>
 
