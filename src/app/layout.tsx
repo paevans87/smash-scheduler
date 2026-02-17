@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ClientProviders } from "@/components/client-providers";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
+import Analytics from "./analytics";
+import CookieBanner from "@/components/ui/cookie-banner";
 
 const roboto = Roboto({
   variable: "--font-roboto",
@@ -34,6 +36,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${roboto.variable} antialiased`}>
+        <Analytics />
+        <CookieBanner />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <TooltipProvider>
             <ClientProviders>{children}</ClientProviders>
