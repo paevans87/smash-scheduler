@@ -28,7 +28,6 @@ type MatchMakingProfile = {
   weight_match_history: number;
   apply_gender_matching: boolean;
   blacklist_mode: number;
-  is_default: boolean;
 };
 
 type Club = {
@@ -37,6 +36,7 @@ type Club = {
   default_court_count: number;
   game_type: number;
   skill_type: number;
+  default_matchmaking_profile_id: string | null;
 };
 
 type ClubManagementPageProps = {
@@ -59,7 +59,7 @@ export default async function ClubManagementPage({
 
   const { data: club } = await supabase
     .from("clubs")
-    .select("id, name, default_court_count, game_type, skill_type")
+    .select("id, name, default_court_count, game_type, skill_type, default_matchmaking_profile_id")
     .eq("slug", clubSlug)
     .single();
 
@@ -229,6 +229,8 @@ export default async function ClubManagementPage({
           <MatchMakingProfileList
             profiles={profiles}
             clubSlug={clubSlug}
+            clubId={club.id}
+            defaultProfileId={club.default_matchmaking_profile_id}
           />
         </CardContent>
       </Card>
