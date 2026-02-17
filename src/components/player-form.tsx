@@ -20,9 +20,10 @@ import { getDb } from "@/lib/offline/db";
 
 type Player = {
   id: string;
-  first_name?: string;
-  last_name?: string | null;
+  first_name: string;
+  last_name: string;
   name?: string;
+  slug?: string;
   skill_level: number;
   gender: number;
   play_style_preference: number;
@@ -50,16 +51,23 @@ const playStyleOptions = [
   { value: "2", label: "Level (same gender)" },
 ];
 
-export type PlayerFormHandle = { getPayload: () => any; isSaving: () => boolean };
+function generatePlayerSlug(firstName: string, lastName: string): string {
+  const combined = `${firstName} ${lastName}`.trim();
+  return combined
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export type PlayerFormHandle = { getPayload: () => Record<string, unknown>; isSaving: () => boolean };
 
 export const PlayerForm = forwardRef<PlayerFormHandle, PlayerFormProps>(function PlayerForm({ clubId, clubSlug, player, onSave, hideActions, formId }, ref) {
   const router = useRouter();
   const { isOnline } = useOnlineStatus();
 
   // Local state for First/Last name separation
-  const [firstName, setFirstName] = useState<string>(player?.first_name ?? (player?.name ?? "").split(" ")[0] ?? "");
-  const lastNameInit = player?.last_name ?? (player?.name ?? "").split(" ").slice(1).join(" ");
-  const [lastName, setLastName] = useState<string>(lastNameInit ?? "");
+  const [firstName, setFirstName] = useState<string>(player?.first_name ?? "");
+  const [lastName, setLastName] = useState<string>(player?.last_name ?? "");
   const [skillLevel, setSkillLevel] = useState<number>(player?.skill_level ?? 5);
   const [gender, setGender] = useState<string>(String(player?.gender ?? 0));
   const [playStyle, setPlayStyle] = useState<string>(String(player?.play_style_preference ?? 0));
@@ -70,7 +78,7 @@ export const PlayerForm = forwardRef<PlayerFormHandle, PlayerFormProps>(function
     const fullName = [firstName, lastName].filter((n) => (n ?? "").trim() !== "").join(" ").trim();
     return {
       first_name: firstName?.trim(),
-      last_name: (lastName?.trim() ?? null) as any,
+      last_name: lastName?.trim() ?? null,
       name: fullName,
       skill_level: skillLevel,
       gender: Number(gender),
@@ -83,24 +91,47 @@ export const PlayerForm = forwardRef<PlayerFormHandle, PlayerFormProps>(function
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const payload = getPayload();
-    if (!payload.name) {
-      setError("Name is required.");
+    if (!payload.first_name?.trim() || !payload.last_name?.trim()) {
+      setError("First name and last name are required.");
       return;
     }
     setSaving(true);
     setError(null);
     let savedPlayerId = player?.id;
+    const slug = generatePlayerSlug(firstName, lastName);
+    const payloadWithSlug = { ...payload, slug };
+
     if (isOnline) {
       const supabase = createClient();
+      
+      // Check for duplicate name within the club
+      const fullName = `${payload.first_name} ${payload.last_name}`.trim().toLowerCase();
+      const { data: existingPlayers } = await supabase
+        .from("players")
+        .select("id, first_name, last_name")
+        .eq("club_id", clubId);
+      
+      const isDuplicate = existingPlayers?.some(p => {
+        if (player?.id && p.id === player.id) return false; // Skip current player when editing
+        const existingFullName = `${p.first_name} ${p.last_name}`.trim().toLowerCase();
+        return existingFullName === fullName;
+      });
+      
+      if (isDuplicate) {
+        setError("A player with this name already exists in this club.");
+        setSaving(false);
+        return;
+      }
+      
       if (player?.id) {
-        const result = await supabase.from("players").update(payload).eq("id", player.id);
+        const result = await supabase.from("players").update(payloadWithSlug).eq("id", player.id);
         if (result.error) {
           setError(result.error.message);
           setSaving(false);
           return;
         }
       } else {
-        const result = await supabase.from("players").insert({ ...payload, club_id: clubId }).select("id").single();
+        const result = await supabase.from("players").insert({ ...payloadWithSlug, club_id: clubId }).select("id").single();
         if (result.error) {
           setError(result.error.message);
           setSaving(false);
@@ -111,13 +142,13 @@ export const PlayerForm = forwardRef<PlayerFormHandle, PlayerFormProps>(function
     } else {
       const db = await getDb();
       if (player?.id) {
-        await db.put("players", { id: player.id, club_id: clubId, ...payload });
-        await enqueuePendingChange({ table: "players", operation: "update", payload: { id: player.id, ...payload } } as any);
+        await db.put("players", { id: player.id, club_id: clubId, ...payloadWithSlug });
+        await enqueuePendingChange({ table: "players", operation: "update", payload: { id: player.id, ...payloadWithSlug } });
       } else {
         const id = crypto.randomUUID();
         savedPlayerId = id;
-        await db.put("players", { id, club_id: clubId, ...payload });
-        await enqueuePendingChange({ table: "players", operation: "insert", payload: { id, club_id: clubId, ...payload } } as any);
+        await db.put("players", { id, club_id: clubId, ...payloadWithSlug });
+        await enqueuePendingChange({ table: "players", operation: "insert", payload: { id, club_id: clubId, ...payloadWithSlug } });
       }
     }
     if (onSave && savedPlayerId) {
@@ -136,8 +167,8 @@ export const PlayerForm = forwardRef<PlayerFormHandle, PlayerFormProps>(function
           <Input id="first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" required />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="last-name">Last Name</Label>
-          <Input id="last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" />
+          <Label htmlFor="last-name">Last Name <span className="text-destructive">*</span></Label>
+          <Input id="last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" required />
         </div>
       </div>
 

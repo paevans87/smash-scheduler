@@ -20,7 +20,7 @@ export async function syncClubData(
       .eq("club_id", clubId),
     supabase
       .from("players")
-      .select("id, club_id, first_name, last_name, name, skill_level, gender, play_style_preference")
+      .select("id, club_id, slug, first_name, last_name, name, skill_level, gender, play_style_preference")
       .eq("club_id", clubId),
     supabase
       .from("matches")
@@ -90,7 +90,7 @@ export async function syncClubData(
       await store.put({
         ...player,
         name: displayName,
-      } as any);
+      });
     }
   }
 

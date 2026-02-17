@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 
 type Player = {
   id: string;
+  first_name: string;
+  last_name: string;
   name?: string;
   skill_level: number;
   gender: number;
@@ -28,6 +30,7 @@ type PlayerEditClientProps = {
   clubId: string;
   clubSlug: string;
   playerId: string;
+  playerSlug?: string;
 };
 
 const PLAYER_FORM_ID = "player-edit-form";
@@ -57,7 +60,7 @@ export function PlayerEditClient({ clubId, clubSlug, playerId }: PlayerEditClien
         const [{ data: playerData }, { data: blacklists }, { data: others }] = await Promise.all([
           supabase
             .from("players")
-            .select("id, name, skill_level, gender, play_style_preference")
+            .select("id, first_name, last_name, name, skill_level, gender, play_style_preference")
             .eq("id", playerId)
             .eq("club_id", clubId)
             .single(),
@@ -151,14 +154,14 @@ export function PlayerEditClient({ clubId, clubSlug, playerId }: PlayerEditClien
           table: "player_blacklists",
           operation: "insert",
           payload: { player_id: savedPlayerId, blacklisted_player_id: add.id, blacklist_type: add.type },
-        } as any);
+        });
       }
       for (const rem of changes.removals) {
         await enqueuePendingChange({
           table: "player_blacklists",
           operation: "delete",
           payload: { id: rem },
-        } as any);
+        });
       }
     }
 

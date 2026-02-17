@@ -36,7 +36,7 @@ export function PlayerListClient({ clubId, clubSlug, planType, playerCount }: Pl
   const [minSkill, setMinSkill] = useState<number>(1);
 
   // Derived filtered list
-  const filteredPlayers = players.filter((p: any) => {
+  const filteredPlayers = players.filter((p) => {
     const name = [p?.first_name, p?.last_name].filter(Boolean).length
       ? `${p?.first_name ?? ""} ${p?.last_name ?? ""}`.trim()
       : p?.name ?? "";
@@ -161,6 +161,7 @@ export function PlayerListClient({ clubId, clubSlug, planType, playerCount }: Pl
               <PlayerCard
                 key={player.id}
                 id={player.id}
+                slug={player.slug}
                 name={displayName}
                 skillLevel={player.skill_level}
                 gender={player.gender}

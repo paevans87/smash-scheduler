@@ -8,8 +8,9 @@ import { getPlayersFromCache, syncClubData } from "./sync-service";
 type Player = {
   id: string;
   club_id: string;
-  first_name?: string;
-  last_name?: string;
+  slug: string;
+  first_name: string;
+  last_name: string;
   name?: string; // derived for UI compatibility
   skill_level: number;
   gender: number;
@@ -44,13 +45,13 @@ export function usePlayers(clubId: string): UsePlayersResult {
           const supabase = createClient();
           const { data } = await supabase
             .from("players")
-            .select("id, club_id, first_name, last_name, name, skill_level, gender, play_style_preference")
+            .select("id, club_id, slug, first_name, last_name, name, skill_level, gender, play_style_preference")
             .eq("club_id", clubId)
             .order("name");
 
           if (!cancelled && data) {
             // Derive a stable UI name from first/last names when available
-            const enriched = data.map((p: any) => ({
+            const enriched = data.map((p) => ({
               ...p,
               name: p.first_name && p.last_name
                 ? `${p.first_name} ${p.last_name}`
@@ -64,7 +65,7 @@ export function usePlayers(clubId: string): UsePlayersResult {
           const cached = await getPlayersFromCache(clubId);
           if (!cancelled) {
             // Cache may not include first/last; ensure name is derived when needed
-            const enriched = cached.map((p: any) => ({
+            const enriched = cached.map((p) => ({
               ...p,
               name: p.first_name && p.last_name
                 ? `${p.first_name} ${p.last_name}`
@@ -74,7 +75,7 @@ export function usePlayers(clubId: string): UsePlayersResult {
             setIsStale(true);
           }
         }
-      } catch (e) {
+      } catch {
         // In case of fetch/cache error, ensure we don't stay in loading state indefinitely
         if (!cancelled) {
           setPlayers([]);

@@ -27,8 +27,9 @@ interface SmashSchedulerDB extends DBSchema {
     value: {
       id: string;
       club_id: string;
-      first_name?: string;
-      last_name?: string;
+      slug: string;
+      first_name: string;
+      last_name: string;
       name?: string;
       skill_level: number;
       gender: number;
@@ -74,7 +75,7 @@ let dbPromise: Promise<IDBPDatabase<SmashSchedulerDB>> | null = null;
 
 export function getDb(): Promise<IDBPDatabase<SmashSchedulerDB>> {
   if (!dbPromise) {
-    dbPromise = openDB<SmashSchedulerDB>("SmashSchedulerDB", 2, {
+    dbPromise = openDB<SmashSchedulerDB>("SmashSchedulerDB", 3, {
       upgrade(db, oldVersion) {
         if (oldVersion < 1) {
           const sessionsStore = db.createObjectStore("sessions", {
