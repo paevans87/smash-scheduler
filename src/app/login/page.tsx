@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Users, Sparkles, Check } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 function GoogleIcon() {
   return (
@@ -119,7 +120,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-100/30 flex">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-100/30 dark:from-background dark:via-background dark:to-background flex">
       {/* Left Side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-primary flex-col justify-between p-12 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary/80" />
@@ -184,7 +185,10 @@ export default function LoginPage() {
       </div>
 
       {/* Right Side - Auth Forms */}
-      <div className="flex-1 flex flex-col justify-center items-center p-4 sm:p-8">
+      <div className="flex-1 flex flex-col justify-center items-center p-4 sm:p-8 relative">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
           <div className="lg:hidden text-center mb-8">
@@ -198,12 +202,12 @@ export default function LoginPage() {
 
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6 bg-muted/50 p-1">
-              <TabsTrigger value="login" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Log in</TabsTrigger>
-              <TabsTrigger value="signup" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Sign up</TabsTrigger>
+              <TabsTrigger value="login" className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm">Log in</TabsTrigger>
+              <TabsTrigger value="signup" className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm">Sign up</TabsTrigger>
             </TabsList>
 
             <TabsContent value="login">
-              <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+              <Card className="border-0 shadow-xl bg-white/80 dark:bg-card/80 backdrop-blur-sm">
                 <CardHeader className="space-y-1">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-2xl">Welcome back</CardTitle>
@@ -260,7 +264,7 @@ export default function LoginPage() {
                       <span className="w-full border-t" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-card px-2 text-muted-foreground">
+                      <span className="bg-white dark:bg-card px-2 text-muted-foreground">
                         Or continue with
                       </span>
                     </div>
@@ -280,7 +284,7 @@ export default function LoginPage() {
             </TabsContent>
 
             <TabsContent value="signup">
-              <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+              <Card className="border-0 shadow-xl bg-white/80 dark:bg-card/80 backdrop-blur-sm">
                 <CardHeader className="space-y-1">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-2xl">Create account</CardTitle>
@@ -330,7 +334,7 @@ export default function LoginPage() {
                       </div>
                     )}
                     {message && (
-                      <div className="p-3 rounded-lg bg-green-50 text-sm text-green-600 border border-green-200">
+                      <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30 text-sm text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800">
                         {message}
                       </div>
                     )}
@@ -344,7 +348,7 @@ export default function LoginPage() {
                       <span className="w-full border-t" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-card px-2 text-muted-foreground">
+                      <span className="bg-white dark:bg-card px-2 text-muted-foreground">
                         Or continue with
                       </span>
                     </div>
