@@ -39,7 +39,6 @@ export function NewProfileForm({ clubId, clubSlug }: NewProfilePageProps) {
   const [historyWeight, setHistoryWeight] = useState(25);
   const [applyGenderMatching, setApplyGenderMatching] = useState(false);
   const [blacklistMode, setBlacklistMode] = useState("0");
-  const [isDefault, setIsDefault] = useState(false);
 
   const totalWeight = skillWeight + timeOffWeight + historyWeight;
   const isValid = totalWeight === 100 && name.trim() !== "";
@@ -51,13 +50,6 @@ export function NewProfileForm({ clubId, clubSlug }: NewProfilePageProps) {
     setIsLoading(true);
 
     try {
-      if (isDefault) {
-        await supabase
-          .from("match_making_profiles")
-          .update({ is_default: false })
-          .eq("club_id", clubId);
-      }
-
       const { error } = await supabase.from("match_making_profiles").insert({
         club_id: clubId,
         name: name.trim(),
@@ -66,7 +58,6 @@ export function NewProfileForm({ clubId, clubSlug }: NewProfilePageProps) {
         weight_match_history: historyWeight,
         apply_gender_matching: applyGenderMatching,
         blacklist_mode: parseInt(blacklistMode),
-        is_default: isDefault,
       });
 
       if (error) {
@@ -99,16 +90,6 @@ export function NewProfileForm({ clubId, clubSlug }: NewProfilePageProps) {
               placeholder="e.g., Competitive, Social, Balanced"
               required
             />
-          </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="isDefault"
-              checked={isDefault}
-              onCheckedChange={(checked: boolean | "indeterminate") => setIsDefault(checked === true)}
-            />
-            <Label htmlFor="isDefault" className="font-normal">
-              Set as default profile
-            </Label>
           </div>
         </CardContent>
       </Card>

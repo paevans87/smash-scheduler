@@ -1,16 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -26,6 +19,7 @@ type Club = {
   name: string;
   default_court_count: number;
   game_type: number;
+  skill_type: number;
 };
 
 type ClubSettingsFormProps = {
@@ -49,7 +43,6 @@ export function ClubSettingsForm({ club, clubSlug }: ClubSettingsFormProps) {
     if (!isValid) return;
 
     setIsLoading(true);
-
     try {
       const { error } = await supabase
         .from("clubs")
@@ -73,57 +66,51 @@ export function ClubSettingsForm({ club, clubSlug }: ClubSettingsFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-2xl space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Club Details</CardTitle>
-          <CardDescription>Update your club information</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Club Name</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter club name"
-              required
-            />
-          </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Club Name</Label>
+          <Input
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Enter club name"
+            required
+          />
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="courts">Default Number of Courts</Label>
-            <Input
-              id="courts"
-              type="number"
-              min={1}
-              max={20}
-              value={defaultCourtCount}
-              onChange={(e) => setDefaultCourtCount(parseInt(e.target.value) || 1)}
-              required
-            />
-            <p className="text-xs text-muted-foreground">
-              This will be the default when creating new sessions
-            </p>
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="courts">Default Number of Courts</Label>
+          <Input
+            id="courts"
+            type="number"
+            min={1}
+            max={20}
+            value={defaultCourtCount}
+            onChange={(e) => setDefaultCourtCount(parseInt(e.target.value) || 1)}
+            required
+          />
+          <p className="text-xs text-muted-foreground">
+            This will be the default when creating new sessions
+          </p>
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="gameType">Default Game Type</Label>
-            <Select value={gameType} onValueChange={setGameType}>
-              <SelectTrigger id="gameType">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="0">Singles</SelectItem>
-                <SelectItem value="1">Doubles</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Determines minimum players needed per session (2 for singles, 4 for doubles)
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+        <div className="space-y-2">
+          <Label htmlFor="gameType">Default Game Type</Label>
+          <Select value={gameType} onValueChange={setGameType}>
+            <SelectTrigger id="gameType">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="0">Singles</SelectItem>
+              <SelectItem value="1">Doubles</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Determines minimum players needed per session (2 for singles, 4 for doubles)
+          </p>
+        </div>
+      </div>
 
       <div className="flex gap-4">
         <Button type="submit" disabled={!isValid || isLoading}>

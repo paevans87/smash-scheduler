@@ -69,7 +69,7 @@ export default async function EditProfilePage({ params }: EditProfilePageProps) 
   const canCreateCustomProfiles = canUseCustomMatchmakingProfiles(planType);
 
   // Custom profiles require Pro subscription
-  if (profile.club_id !== null && !profile.is_default && !canCreateCustomProfiles) {
+  if (profile.club_id !== null && !canCreateCustomProfiles) {
     redirect(`/clubs/${clubSlug}/manage`);
   }
 

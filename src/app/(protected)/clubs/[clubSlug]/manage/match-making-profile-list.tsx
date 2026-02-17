@@ -1,7 +1,12 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Star } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 type MatchMakingProfile = {
@@ -13,18 +18,40 @@ type MatchMakingProfile = {
   weight_match_history: number;
   apply_gender_matching: boolean;
   blacklist_mode: number;
-  is_default: boolean;
 };
 
 type MatchMakingProfileListProps = {
   profiles: MatchMakingProfile[];
   clubSlug: string;
+  clubId: string;
+  defaultProfileId: string | null;
 };
 
 export function MatchMakingProfileList({
   profiles,
   clubSlug,
+  clubId,
+  defaultProfileId,
 }: MatchMakingProfileListProps) {
+  const router = useRouter();
+  const supabase = createClient();
+  const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null);
+
+  async function handleSetDefault(profileId: string) {
+    setSettingDefaultId(profileId);
+    try {
+      const { error } = await supabase
+        .from("clubs")
+        .update({ default_matchmaking_profile_id: profileId })
+        .eq("id", clubId);
+      if (!error) {
+        router.refresh();
+      }
+    } finally {
+      setSettingDefaultId(null);
+    }
+  }
+
   if (profiles.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -50,11 +77,27 @@ export function MatchMakingProfileList({
                   ) : (
                     <Badge variant="outline">Custom</Badge>
                   )}
-                  {profile.is_default && (
+                  {profile.id === defaultProfileId && (
                     <Badge variant="default">Default</Badge>
                   )}
                 </div>
               </div>
+              {profile.id !== defaultProfileId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  disabled={settingDefaultId !== null}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSetDefault(profile.id);
+                  }}
+                >
+                  <Star className="mr-1 size-3" />
+                  {settingDefaultId === profile.id ? "Setting..." : "Set Default"}
+                </Button>
+              )}
             </div>
             <div className="mt-4 grid grid-cols-3 gap-2 text-xs text-muted-foreground">
               <div>

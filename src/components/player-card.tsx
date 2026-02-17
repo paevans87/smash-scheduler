@@ -1,17 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { Pencil } from "lucide-react";
+import { Pencil, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { DeletePlayerDialog } from "@/components/delete-player-dialog";
 
 type PlayerCardProps = {
   id: string;
   slug: string;
   name: string;
-  skillLevel: number;
+  skillLevel: number | null;
+  skillTierId: string | null;
+  tierName: string | null;
   gender: number;
   clubSlug: string;
+  skillType: number;
   onDeleted?: () => void;
 };
 
@@ -28,6 +32,14 @@ function getSkillColour(level: number): string {
   return "var(--primary)";
 }
 
+function getTierColour(tierName: string): string {
+  const lower = tierName.toLowerCase();
+  if (lower === "lower") return "var(--smash-error)";
+  if (lower === "middle") return "var(--smash-warning)";
+  if (lower === "upper") return "var(--smash-success)";
+  return "var(--primary)";
+}
+
 function getInitials(name: string): string {
   return name
     .split(" ")
@@ -37,7 +49,9 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-export function PlayerCard({ id, slug, name, skillLevel, gender, clubSlug, onDeleted }: PlayerCardProps) {
+export function PlayerCard({ id, slug, name, skillLevel, skillTierId, tierName, gender, clubSlug, skillType, onDeleted }: PlayerCardProps) {
+  const needsAttention = skillType === 0 ? skillLevel == null : skillTierId == null;
+
   return (
     <div className="flex items-center gap-3 rounded-lg border bg-card p-3">
       <div
@@ -49,12 +63,32 @@ export function PlayerCard({ id, slug, name, skillLevel, gender, clubSlug, onDel
 
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <span className="truncate font-medium">{name}</span>
-        <span
-          className="flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-          style={{ backgroundColor: getSkillColour(skillLevel) }}
-        >
-          {skillLevel}
-        </span>
+        {needsAttention ? (
+          <Badge variant="destructive" className="shrink-0 gap-1 text-xs">
+            <AlertCircle className="size-3" />
+            Needs skill
+          </Badge>
+        ) : skillType === 0 ? (
+          <span
+            className="flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+            style={{ backgroundColor: getSkillColour(skillLevel ?? 5) }}
+          >
+            {skillLevel}
+          </span>
+        ) : (
+          tierName == null ? (
+            <Badge className="shrink-0 text-xs font-medium text-white" style={{ backgroundColor: "var(--amber-500)" }}>
+              Not set
+            </Badge>
+          ) : (
+            <Badge
+              className="shrink-0 text-xs font-medium text-white"
+              style={{ backgroundColor: getTierColour(tierName) }}
+            >
+              {tierName}
+            </Badge>
+          )
+        )}
       </div>
 
       <div className="flex shrink-0 items-center gap-1">

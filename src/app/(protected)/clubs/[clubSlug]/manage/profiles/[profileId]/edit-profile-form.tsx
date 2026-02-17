@@ -45,7 +45,6 @@ type Profile = {
   weight_match_history: number;
   apply_gender_matching: boolean;
   blacklist_mode: number;
-  is_default: boolean;
 };
 
 type EditProfileFormProps = {
@@ -67,7 +66,6 @@ export function EditProfileForm({ profile, clubId, clubSlug, canCreateCustomProf
   const [historyWeight, setHistoryWeight] = useState(profile.weight_match_history);
   const [applyGenderMatching, setApplyGenderMatching] = useState(profile.apply_gender_matching);
   const [blacklistMode, setBlacklistMode] = useState(profile.blacklist_mode.toString());
-  const [isDefault, setIsDefault] = useState(profile.is_default);
 
   const totalWeight = skillWeight + timeOffWeight + historyWeight;
   const isValid = totalWeight === 100 && name.trim() !== "";
@@ -79,13 +77,6 @@ export function EditProfileForm({ profile, clubId, clubSlug, canCreateCustomProf
     setIsLoading(true);
 
     try {
-      if (isDefault && !profile.is_default) {
-        await supabase
-          .from("match_making_profiles")
-          .update({ is_default: false })
-          .eq("club_id", clubId);
-      }
-
       const { error } = await supabase
         .from("match_making_profiles")
         .update({
@@ -95,7 +86,6 @@ export function EditProfileForm({ profile, clubId, clubSlug, canCreateCustomProf
           weight_match_history: historyWeight,
           apply_gender_matching: applyGenderMatching,
           blacklist_mode: parseInt(blacklistMode),
-          is_default: isDefault,
         })
         .eq("id", profile.id);
 
@@ -172,17 +162,6 @@ export function EditProfileForm({ profile, clubId, clubSlug, canCreateCustomProf
               required
               disabled={isSystemDefault}
             />
-          </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="isDefault"
-              checked={isDefault}
-              onCheckedChange={(checked: boolean | "indeterminate") => setIsDefault(checked === true)}
-              disabled={isSystemDefault}
-            />
-            <Label htmlFor="isDefault" className="font-normal">
-              Set as default profile
-            </Label>
           </div>
         </CardContent>
       </Card>

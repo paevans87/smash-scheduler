@@ -1,41 +1,118 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
-import { Crown, UserPlus } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { Crown, UserPlus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { usePlayers } from "@/lib/offline/use-players";
+import { createClient } from "@/lib/supabase/client";
 import { PlayerCard } from "@/components/player-card";
 import { canAddPlayer } from "@/lib/subscription/restrictions";
 import type { PlanType } from "@/lib/subscription/hooks";
+import type { SkillTier } from "@/components/player-form";
+
+type Player = {
+  id: string;
+  club_id: string;
+  slug: string;
+  first_name: string;
+  last_name: string;
+  name?: string;
+  numerical_skill_level: number | null;
+  skill_tier_id: string | null;
+  gender: number;
+  play_style_preference: number;
+};
+
+type UsePlayersResult = {
+  players: Player[];
+  isLoading: boolean;
+  mutate: () => void;
+};
+
+function usePlayers(clubId: string): UsePlayersResult {
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [revalidateKey, setRevalidateKey] = useState(0);
+
+  const mutate = useCallback(() => {
+    setRevalidateKey((k) => k + 1);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setIsLoading(true);
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from("players")
+          .select("id, club_id, slug, first_name, last_name, name, numerical_skill_level, skill_tier_id, gender, play_style_preference")
+          .eq("club_id", clubId)
+          .order("name");
+
+        if (!cancelled && data) {
+          const enriched = data.map((p) => ({
+            ...p,
+            name: p.first_name && p.last_name
+              ? `${p.first_name} ${p.last_name}`
+              : p.name,
+          }));
+          setPlayers(enriched);
+        }
+      } catch {
+        if (!cancelled) {
+          setPlayers([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clubId, revalidateKey]);
+
+  return { players, isLoading, mutate };
+}
 
 type PlayerListClientProps = {
   clubId: string;
   clubSlug: string;
   planType: PlanType;
   playerCount: number;
+  skillType: number;
+  tiers: SkillTier[];
 };
 
-export function PlayerListClient({ clubId, clubSlug, planType, playerCount }: PlayerListClientProps) {
-  const { players, isLoading, isStale, mutate } = usePlayers(clubId);
+export function PlayerListClient({ clubId, clubSlug, planType, playerCount, skillType, tiers }: PlayerListClientProps) {
+  const { players, isLoading, mutate } = usePlayers(clubId);
 
   const handleDeleted = useCallback(() => {
     mutate();
   }, [mutate]);
 
   const canAddMore = canAddPlayer(playerCount, planType);
-  const maxPlayers = planType === "pro" ? "unlimited" : "16";
 
-  // Simple filters state
+  // Build a lookup map for tier names
+  const tierMap = new Map(tiers.map((t) => [t.id, t]));
+
   const [searchText, setSearchText] = useState<string>("");
   const [genderFilter, setGenderFilter] = useState<string>("any");
   const [minSkill, setMinSkill] = useState<number>(1);
+  const [tierFilter, setTierFilter] = useState<string>("any");
 
-  // Derived filtered list
+  const sortedTiers = [...tiers].sort((a, b) => a.display_order - b.display_order);
+
   const filteredPlayers = players.filter((p) => {
     const name = [p?.first_name, p?.last_name].filter(Boolean).length
       ? `${p?.first_name ?? ""} ${p?.last_name ?? ""}`.trim()
@@ -44,8 +121,14 @@ export function PlayerListClient({ clubId, clubSlug, planType, playerCount }: Pl
     if (searchText && !nameLC.includes(searchText.toLowerCase())) return false;
     const g = (p?.gender ?? 2).toString();
     if (genderFilter !== "any" && g !== genderFilter) return false;
-    const skill = p?.skill_level ?? 0;
-    if (skill < minSkill) return false;
+    if (skillType === 1) {
+      if (tierFilter !== "any") {
+        if (p?.skill_tier_id !== tierFilter) return false;
+      }
+    } else {
+      const skill = p?.numerical_skill_level;
+      if (skill !== null && skill !== undefined && skill < minSkill) return false;
+    }
     return true;
   });
 
@@ -69,7 +152,6 @@ export function PlayerListClient({ clubId, clubSlug, planType, playerCount }: Pl
     );
   }
 
-  // Main render
   return (
     <div className="space-y-6 px-4 py-6 md:px-6">
       <div className="flex items-center justify-between mb-2">
@@ -111,7 +193,7 @@ export function PlayerListClient({ clubId, clubSlug, planType, playerCount }: Pl
         <CardHeader>
           <CardTitle className="text-sm font-semibold text-muted-foreground">Filters</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-8 p-4">
+        <CardContent className={`grid grid-cols-1 ${skillType === 1 ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-8 p-4`}>
           <div>
             <Label>Name</Label>
             <Input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Search by name" />
@@ -127,17 +209,28 @@ export function PlayerListClient({ clubId, clubSlug, planType, playerCount }: Pl
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label>Min Skill</Label>
-            <Slider min={1} max={10} value={[minSkill]} onValueChange={([v]) => setMinSkill(v)} />
-            <div className="text-xs text-muted-foreground mt-1">Current: {minSkill}</div>
-          </div>
+          {skillType === 0 ? (
+            <div className="space-y-2">
+              <Label>Min Skill</Label>
+              <Slider min={1} max={10} value={[minSkill]} onValueChange={([v]) => setMinSkill(v)} />
+              <div className="text-xs text-muted-foreground mt-1">Current: {minSkill}</div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>Skill Tier</Label>
+              <Select value={tierFilter} onValueChange={setTierFilter}>
+                <SelectTrigger><SelectValue placeholder="Any" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any</SelectItem>
+                  {sortedTiers.map((tier) => (
+                    <SelectItem key={tier.id} value={tier.id}>{tier.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </CardContent>
       </Card>
-      )}
-
-      {isStale && (
-        <p className="text-sm text-muted-foreground italic">Showing cached data — changes will sync when you are back online.</p>
       )}
 
       {filteredPlayers.length === 0 ? (
@@ -157,15 +250,19 @@ export function PlayerListClient({ clubId, clubSlug, planType, playerCount }: Pl
             const displayName = [player?.first_name, player?.last_name].filter(Boolean).length
               ? `${player?.first_name ?? ''} ${player?.last_name ?? ''}`.trim()
               : player?.name ?? '';
+            const tier = player.skill_tier_id ? tierMap.get(player.skill_tier_id) : null;
             return (
               <PlayerCard
                 key={player.id}
                 id={player.id}
                 slug={player.slug}
                 name={displayName}
-                skillLevel={player.skill_level}
+                skillLevel={player.numerical_skill_level}
+                skillTierId={player.skill_tier_id}
+                tierName={tier?.name ?? null}
                 gender={player.gender}
                 clubSlug={clubSlug}
+                skillType={skillType}
                 onDeleted={handleDeleted}
               />
             );

@@ -13,7 +13,7 @@ export default async function PlayersPage({ params }: PlayersPageProps) {
 
   const { data: club } = await supabase
     .from("clubs")
-    .select("id")
+    .select("id, skill_type")
     .eq("slug", clubSlug)
     .single();
 
@@ -21,13 +21,25 @@ export default async function PlayersPage({ params }: PlayersPageProps) {
     redirect("/clubs");
   }
 
-  const [subscription, { count: playerCount }] = await Promise.all([
+  const [subscription, { count: playerCount }, { data: clubTiers }, { data: defaultTiers }] = await Promise.all([
     getClubSubscription(club.id),
     supabase
       .from("players")
       .select("id", { count: "exact", head: true })
       .eq("club_id", club.id),
+    supabase
+      .from("club_skill_tiers")
+      .select("*")
+      .eq("club_id", club.id)
+      .order("display_order", { ascending: true }),
+    supabase
+      .from("club_skill_tiers")
+      .select("*")
+      .is("club_id", null)
+      .order("display_order", { ascending: true }),
   ]);
+
+  const tiers = (clubTiers && clubTiers.length > 0) ? clubTiers : (defaultTiers ?? []);
 
   return (
     <PlayerListClient
@@ -35,6 +47,8 @@ export default async function PlayersPage({ params }: PlayersPageProps) {
       clubSlug={clubSlug}
       planType={subscription?.planType ?? "free"}
       playerCount={playerCount ?? 0}
+      skillType={club.skill_type}
+      tiers={tiers}
     />
   );
 }
