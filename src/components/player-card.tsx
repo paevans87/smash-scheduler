@@ -7,6 +7,7 @@ import { DeletePlayerDialog } from "@/components/delete-player-dialog";
 
 type PlayerCardProps = {
   id: string;
+  slug: string;
   name: string;
   skillLevel: number;
   gender: number;
@@ -36,7 +37,7 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-export function PlayerCard({ id, name, skillLevel, gender, clubSlug, onDeleted }: PlayerCardProps) {
+export function PlayerCard({ id, slug, name, skillLevel, gender, clubSlug, onDeleted }: PlayerCardProps) {
   return (
     <div className="flex items-center gap-3 rounded-lg border bg-card p-3">
       <div
@@ -58,7 +59,7 @@ export function PlayerCard({ id, name, skillLevel, gender, clubSlug, onDeleted }
 
       <div className="flex shrink-0 items-center gap-1">
         <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" asChild>
-          <Link href={`/clubs/${clubSlug}/players/${id}/edit`}>
+          <Link href={`/clubs/${clubSlug}/players/${slug}/edit`}>
             <Pencil className="size-4" />
           </Link>
         </Button>

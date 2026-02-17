@@ -60,7 +60,7 @@ export function PlayerNewClient({ clubId, clubSlug }: PlayerNewClientProps) {
           table: "player_blacklists",
           operation: "insert",
           payload: { player_id: savedPlayerId, blacklisted_player_id: add.id, blacklist_type: add.type },
-        } as any);
+        });
       }
     }
 
