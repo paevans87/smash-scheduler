@@ -1,9 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { seedSession, seedSessionPlayers, seedCourtLabels } from "@/lib/db/index";
+import {
+  getDb,
+  seedSession,
+  seedSessionPlayers,
+  seedCourtLabels,
+  seedMatches,
+  seedMatchPlayers,
+} from "@/lib/db/index";
 import { enqueueMutation, processQueue } from "@/lib/db/sync";
 import { useSyncStatus } from "@/hooks/use-sync-status";
 import { Button } from "@/components/ui/button";
@@ -32,6 +39,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ManualMatchDialog } from "@/components/manual-match-dialog";
+import { CompleteMatchDialog } from "@/components/complete-match-dialog";
 import {
   BarChart2,
   Armchair,
@@ -44,7 +53,14 @@ import {
   Wifi,
   WifiOff,
   Loader2,
+  Play,
+  UserX,
+  UserCheck,
+  Trophy,
+  ClipboardList,
 } from "lucide-react";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type Player = {
   id: string;
@@ -56,6 +72,24 @@ type SessionPlayer = {
   player_id: string;
   is_active: boolean;
   player?: Player;
+};
+
+type MatchPlayer = {
+  player_id: string;
+  team_number: number;
+};
+
+type Match = {
+  id: string;
+  court_number: number;
+  state: number; // 0=inProgress, 1=completed, 2=draft
+  was_automated: boolean;
+  started_at: string | null;
+  completed_at: string | null;
+  team1_score: number | null;
+  team2_score: number | null;
+  winning_team: number | null;
+  players: MatchPlayer[];
 };
 
 type CourtLabel = {
@@ -78,46 +112,97 @@ const genderColours: Record<number, string> = {
   1: "var(--smash-gender-female)",
 };
 
+// ─── Props ────────────────────────────────────────────────────────────────────
+
 type Props = {
   sessionId: string;
   clubSlug: string;
+  gameType: number; // 0=singles, 1=doubles
   session: Session;
   sessionPlayers: SessionPlayer[];
   courtLabels: CourtLabel[];
+  matches: Match[];
 };
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function ActiveSessionClient({
   sessionId,
   clubSlug,
+  gameType,
   session,
   sessionPlayers,
   courtLabels,
+  matches: initialMatches,
 }: Props) {
   const router = useRouter();
   const supabase = createClient();
-  const [isEnding, setIsEnding] = useState(false);
-  const [sessionEnded, setSessionEnded] = useState(false);
-  const [sortField, setSortField] = useState<SortField>("name");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const { isOnline, pendingCount, isSyncing } = useSyncStatus();
 
-  // Seed IndexedDB on mount so data is available if connection drops
+  // ─── Local state ──────────────────────────────────────────────────────────
+
+  const [isEnding, setIsEnding] = useState(false);
+  const [sessionEnded, setSessionEnded] = useState(false);
+  const [localSessionPlayers, setLocalSessionPlayers] =
+    useState<SessionPlayer[]>(sessionPlayers);
+  const [localMatches, setLocalMatches] = useState<Match[]>(initialMatches);
+  const [sortField, setSortField] = useState<SortField>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  // Dialog state
+  const [matchDialogOpen, setMatchDialogOpen] = useState(false);
+  const [matchDialogMode, setMatchDialogMode] = useState<"manual" | "draft">(
+    "manual"
+  );
+  const [completeDialogMatch, setCompleteDialogMatch] = useState<Match | null>(
+    null
+  );
+
+  // ─── Seed IDB on mount ────────────────────────────────────────────────────
+
   useEffect(() => {
     seedSession({
       id: session.id,
-      club_id: "", // not needed for offline ops, already have sessionId
+      club_id: "",
       scheduled_date_time: session.scheduled_date_time,
       court_count: session.court_count,
       state: session.state,
     });
     seedSessionPlayers(
       sessionId,
-      sessionPlayers.map((sp) => ({ player_id: sp.player_id, is_active: sp.is_active }))
+      sessionPlayers.map((sp) => ({
+        player_id: sp.player_id,
+        is_active: sp.is_active,
+      }))
     );
     seedCourtLabels(sessionId, courtLabels);
-  }, [session, sessionId, sessionPlayers, courtLabels]);
 
-  // Once back online after ending session offline, navigate away
+    const matchValues = initialMatches.map((m) => ({
+      id: m.id,
+      session_id: sessionId,
+      court_number: m.court_number,
+      state: m.state,
+      was_automated: m.was_automated,
+      started_at: m.started_at,
+      completed_at: m.completed_at,
+      team1_score: m.team1_score,
+      team2_score: m.team2_score,
+      winning_team: m.winning_team,
+    }));
+    seedMatches(matchValues);
+
+    const matchPlayerValues = initialMatches.flatMap((m) =>
+      m.players.map((mp) => ({
+        match_id: m.id,
+        player_id: mp.player_id,
+        team_number: mp.team_number,
+      }))
+    );
+    seedMatchPlayers(matchPlayerValues);
+  }, [session, sessionId, sessionPlayers, courtLabels, initialMatches]);
+
+  // ─── Navigate after offline session end ───────────────────────────────────
+
   useEffect(() => {
     if (sessionEnded && isOnline && pendingCount === 0) {
       router.push(`/clubs/${clubSlug}/sessions`);
@@ -125,19 +210,134 @@ export function ActiveSessionClient({
     }
   }, [sessionEnded, isOnline, pendingCount, clubSlug, router]);
 
-  const scheduledDate = new Date(session.scheduled_date_time);
-  const activePlayers = sessionPlayers.filter((sp) => sp.is_active && sp.player);
+  // ─── Derived values ───────────────────────────────────────────────────────
+
+  const playersPerMatch = gameType === 0 ? 2 : 4;
   const courtCount = session.court_count;
   const courts = Array.from({ length: courtCount }, (_, i) => i + 1);
 
-  const nPlaying = 0;
-  const nCompleted = 0;
-  const nInProgress = 0;
-  const benchPlayers = activePlayers;
+  const scheduledDate = new Date(session.scheduled_date_time);
 
-  function getCourtName(num: number) {
-    const label = courtLabels.find((cl) => cl.court_number === num);
-    return label?.label || `Court ${num}`;
+  const activePlayers = localSessionPlayers.filter(
+    (sp) => sp.is_active && sp.player
+  );
+  const sittingOutPlayers = localSessionPlayers.filter(
+    (sp) => !sp.is_active && sp.player
+  );
+
+  const committedPlayerIds = useMemo(() => {
+    return new Set(
+      localMatches
+        .filter((m) => m.state === 0 || m.state === 2)
+        .flatMap((m) => m.players.map((mp) => mp.player_id))
+    );
+  }, [localMatches]);
+
+  const benchPlayers = activePlayers.filter(
+    (sp) => !committedPlayerIds.has(sp.player_id)
+  );
+
+  const usedCourts = new Set(
+    localMatches.filter((m) => m.state === 0).map((m) => m.court_number)
+  );
+  const availableCourts = courts.filter((n) => !usedCourts.has(n));
+  const draftMatches = localMatches.filter((m) => m.state === 2);
+
+  const nInProgress = localMatches.filter((m) => m.state === 0).length;
+  const nCompleted = localMatches.filter((m) => m.state === 1).length;
+  const completedMatches = localMatches.filter((m) => m.state === 1);
+
+  // Player stats (games played + last match time)
+  const playerStatsMap = useMemo(() => {
+    const map = new Map<
+      string,
+      { gamesPlayed: number; lastCompletedAt: number }
+    >();
+    for (const sp of localSessionPlayers) {
+      const playerCompleted = completedMatches.filter((m) =>
+        m.players.some((mp) => mp.player_id === sp.player_id)
+      );
+      const lastCompletedAt =
+        playerCompleted.length > 0
+          ? Math.max(
+              ...playerCompleted.map((m) =>
+                m.completed_at ? new Date(m.completed_at).getTime() : 0
+              )
+            )
+          : 0;
+      map.set(sp.player_id, {
+        gamesPlayed: playerCompleted.length,
+        lastCompletedAt,
+      });
+    }
+    return map;
+  }, [localSessionPlayers, completedMatches]);
+
+  const avgGamesPerPlayer =
+    activePlayers.length > 0
+      ? (
+          Array.from(playerStatsMap.values()).reduce(
+            (sum, s) => sum + s.gamesPlayed,
+            0
+          ) / activePlayers.length
+        ).toFixed(1)
+      : "0";
+
+  const completedWithDuration = completedMatches.filter(
+    (m) => m.started_at && m.completed_at
+  );
+  const avgMatchMins =
+    completedWithDuration.length > 0
+      ? Math.round(
+          completedWithDuration.reduce((sum, m) => {
+            const start = new Date(m.started_at!).getTime();
+            const end = new Date(m.completed_at!).getTime();
+            return sum + (end - start) / 60000;
+          }, 0) / completedWithDuration.length
+        )
+      : null;
+
+  // ─── Helpers ─────────────────────────────────────────────────────────────
+
+  function getCourtName(num: number): string {
+    return (
+      courtLabels.find((cl) => cl.court_number === num)?.label ?? `Court ${num}`
+    );
+  }
+
+  function getPlayer(playerId: string): Player | undefined {
+    return localSessionPlayers.find((sp) => sp.player_id === playerId)?.player;
+  }
+
+  function getPlayerName(playerId: string): string {
+    return getPlayer(playerId)?.name ?? "Unknown";
+  }
+
+  function getPlayerLocation(playerId: string): string {
+    const inProgress = localMatches.find(
+      (m) =>
+        m.state === 0 && m.players.some((mp) => mp.player_id === playerId)
+    );
+    if (inProgress) return getCourtName(inProgress.court_number);
+
+    const inDraft = localMatches.find(
+      (m) =>
+        m.state === 2 && m.players.some((mp) => mp.player_id === playerId)
+    );
+    if (inDraft) return "Draft";
+
+    const sp = localSessionPlayers.find((s) => s.player_id === playerId);
+    if (!sp?.is_active) return "Sitting Out";
+
+    return "Bench";
+  }
+
+  function formatLastMatch(lastCompletedAt: number): string {
+    if (lastCompletedAt === 0) return "N/A";
+    const mins = Math.floor((Date.now() - lastCompletedAt) / 60000);
+    if (mins < 1) return "Just now";
+    if (mins === 1) return "1 min ago";
+    return `${mins} min ago`;
   }
 
   function handleSort(field: SortField) {
@@ -149,18 +349,224 @@ export function ActiveSessionClient({
     }
   }
 
-  const sortedPlayers = [...activePlayers].sort((a, b) => {
-    const dir = sortDir === "asc" ? 1 : -1;
-    if (sortField === "name") {
-      return (a.player?.name ?? "").localeCompare(b.player?.name ?? "") * dir;
+  const sortedStatsPlayers = useMemo(() => {
+    return [...localSessionPlayers.filter((sp) => sp.player)].sort((a, b) => {
+      const dir = sortDir === "asc" ? 1 : -1;
+      if (sortField === "name") {
+        return (
+          (a.player?.name ?? "").localeCompare(b.player?.name ?? "") * dir
+        );
+      }
+      if (sortField === "games") {
+        const ag = playerStatsMap.get(a.player_id)?.gamesPlayed ?? 0;
+        const bg = playerStatsMap.get(b.player_id)?.gamesPlayed ?? 0;
+        return (ag - bg) * dir;
+      }
+      if (sortField === "time") {
+        const at = playerStatsMap.get(a.player_id)?.lastCompletedAt ?? 0;
+        const bt = playerStatsMap.get(b.player_id)?.lastCompletedAt ?? 0;
+        return (at - bt) * dir;
+      }
+      return 0;
+    });
+  }, [localSessionPlayers, sortField, sortDir, playerStatsMap]);
+
+  // ─── Match operations (offline-first) ────────────────────────────────────
+
+  async function handleCreateMatch(
+    players: { player_id: string; team_number: number }[],
+    courtNumber: number
+  ) {
+    const matchId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const isDraft = courtNumber === 0;
+
+    const newMatch: Match = {
+      id: matchId,
+      court_number: courtNumber,
+      state: isDraft ? 2 : 0,
+      was_automated: false,
+      started_at: isDraft ? null : now,
+      completed_at: null,
+      team1_score: null,
+      team2_score: null,
+      winning_team: null,
+      players,
+    };
+
+    setLocalMatches((prev) => [...prev, newMatch]);
+
+    try {
+      const db = await getDb();
+      await db.put("matches", {
+        id: matchId,
+        session_id: sessionId,
+        court_number: courtNumber,
+        state: newMatch.state,
+        was_automated: false,
+        started_at: newMatch.started_at,
+        completed_at: null,
+        team1_score: null,
+        team2_score: null,
+        winning_team: null,
+      });
+      for (const mp of players) {
+        await db.put("match_players", {
+          match_id: matchId,
+          player_id: mp.player_id,
+          team_number: mp.team_number,
+        });
+      }
+
+      await enqueueMutation("matches", "insert", {
+        id: matchId,
+        session_id: sessionId,
+        court_number: courtNumber,
+        state: newMatch.state,
+        was_automated: false,
+        started_at: newMatch.started_at,
+      });
+      for (const mp of players) {
+        await enqueueMutation("match_players", "insert", {
+          match_id: matchId,
+          player_id: mp.player_id,
+          team_number: mp.team_number,
+        });
+      }
+
+      processQueue(supabase).catch(() => {});
+    } catch {
+      // IDB/sync failure is non-fatal — local state already updated
     }
-    return 0;
-  });
+  }
+
+  async function handleCompleteMatch(
+    matchId: string,
+    winningTeam: number | null,
+    team1Score: number | null,
+    team2Score: number | null
+  ) {
+    const now = new Date().toISOString();
+
+    setLocalMatches((prev) =>
+      prev.map((m) =>
+        m.id === matchId
+          ? {
+              ...m,
+              state: 1,
+              completed_at: now,
+              winning_team: winningTeam,
+              team1_score: team1Score,
+              team2_score: team2Score,
+            }
+          : m
+      )
+    );
+
+    try {
+      const db = await getDb();
+      const existing = await db.get("matches", matchId);
+      if (existing) {
+        await db.put("matches", {
+          ...existing,
+          state: 1,
+          completed_at: now,
+          winning_team: winningTeam,
+          team1_score: team1Score,
+          team2_score: team2Score,
+        });
+      }
+
+      await enqueueMutation(
+        "matches",
+        "update",
+        {
+          state: 1,
+          completed_at: now,
+          winning_team: winningTeam,
+          team1_score: team1Score,
+          team2_score: team2Score,
+        },
+        { id: matchId }
+      );
+
+      processQueue(supabase).catch(() => {});
+    } catch {
+      // non-fatal
+    }
+  }
+
+  async function handleStartDraft(matchId: string, courtNumber: number) {
+    const now = new Date().toISOString();
+
+    setLocalMatches((prev) =>
+      prev.map((m) =>
+        m.id === matchId
+          ? { ...m, state: 0, court_number: courtNumber, started_at: now }
+          : m
+      )
+    );
+
+    try {
+      const db = await getDb();
+      const existing = await db.get("matches", matchId);
+      if (existing) {
+        await db.put("matches", {
+          ...existing,
+          state: 0,
+          court_number: courtNumber,
+          started_at: now,
+        });
+      }
+
+      await enqueueMutation(
+        "matches",
+        "update",
+        { state: 0, court_number: courtNumber, started_at: now },
+        { id: matchId }
+      );
+
+      processQueue(supabase).catch(() => {});
+    } catch {
+      // non-fatal
+    }
+  }
+
+  async function handleToggleActive(playerId: string) {
+    const sp = localSessionPlayers.find((s) => s.player_id === playerId);
+    if (!sp) return;
+    const newIsActive = !sp.is_active;
+
+    setLocalSessionPlayers((prev) =>
+      prev.map((s) =>
+        s.player_id === playerId ? { ...s, is_active: newIsActive } : s
+      )
+    );
+
+    try {
+      const db = await getDb();
+      await db.put("session_players", {
+        session_id: sessionId,
+        player_id: playerId,
+        is_active: newIsActive,
+      });
+
+      await enqueueMutation(
+        "session_players",
+        "update",
+        { is_active: newIsActive },
+        { session_id: sessionId, player_id: playerId }
+      );
+
+      processQueue(supabase).catch(() => {});
+    } catch {
+      // non-fatal
+    }
+  }
 
   async function handleEndSession() {
     setIsEnding(true);
     try {
-      // Write locally first
       await enqueueMutation(
         "sessions",
         "update",
@@ -169,12 +575,10 @@ export function ActiveSessionClient({
       );
 
       if (isOnline) {
-        // Flush queue immediately — includes the update above
         await processQueue(supabase);
         router.push(`/clubs/${clubSlug}/sessions`);
         router.refresh();
       } else {
-        // Stay on the page; useEffect will navigate once synced
         setSessionEnded(true);
         setIsEnding(false);
       }
@@ -182,6 +586,8 @@ export function ActiveSessionClient({
       setIsEnding(false);
     }
   }
+
+  // ─── Sub-components ───────────────────────────────────────────────────────
 
   function SortIcon({ field }: { field: SortField }) {
     if (sortField !== field)
@@ -192,8 +598,6 @@ export function ActiveSessionClient({
       <ChevronDown className="inline h-3 w-3 ml-1" />
     );
   }
-
-  // ─── Sync status indicator ────────────────────────────────────────────────
 
   function SyncIndicator() {
     if (isSyncing) {
@@ -220,7 +624,7 @@ export function ActiveSessionClient({
     );
   }
 
-  // ─── Session ended offline overlay ────────────────────────────────────────
+  // ─── Offline ended screen ─────────────────────────────────────────────────
 
   if (sessionEnded) {
     return (
@@ -239,9 +643,11 @@ export function ActiveSessionClient({
     );
   }
 
+  // ─── Render ───────────────────────────────────────────────────────────────
+
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Active Session</h1>
@@ -255,8 +661,7 @@ export function ActiveSessionClient({
               hour: "2-digit",
               minute: "2-digit",
             })}{" "}
-            •{" "}
-            {courtCount} {courtCount === 1 ? "court" : "courts"}
+            • {courtCount} {courtCount === 1 ? "court" : "courts"}
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
@@ -274,10 +679,29 @@ export function ActiveSessionClient({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem disabled>Auto Generate</DropdownMenuItem>
-              <DropdownMenuItem disabled>Add Manual</DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={
+                  availableCourts.length === 0 ||
+                  benchPlayers.length < playersPerMatch
+                }
+                onClick={() => {
+                  setMatchDialogMode("manual");
+                  setMatchDialogOpen(true);
+                }}
+              >
+                Add Manual
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem disabled>Auto Draft</DropdownMenuItem>
-              <DropdownMenuItem disabled>Manual Draft</DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={benchPlayers.length < playersPerMatch}
+                onClick={() => {
+                  setMatchDialogMode("draft");
+                  setMatchDialogOpen(true);
+                }}
+              >
+                Manual Draft
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <AlertDialog>
@@ -314,7 +738,7 @@ export function ActiveSessionClient({
         </div>
       </div>
 
-      {/* Session Statistics — collapsed by default */}
+      {/* ── Session Statistics ──────────────────────────────────────────────── */}
       <Accordion type="single" collapsible>
         <AccordionItem value="stats" className="border rounded-lg px-4">
           <AccordionTrigger className="hover:no-underline py-4">
@@ -322,7 +746,7 @@ export function ActiveSessionClient({
               <BarChart2 className="h-5 w-5 text-muted-foreground shrink-0" />
               <span className="font-semibold">Session Statistics</span>
               <Badge variant="secondary" className="text-xs font-normal">
-                {nPlaying} playing • {nCompleted} completed
+                {nInProgress} playing • {nCompleted} completed
               </Badge>
             </div>
           </AccordionTrigger>
@@ -343,7 +767,7 @@ export function ActiveSessionClient({
                 </div>
                 <div className="rounded-lg bg-blue-500/15 p-4">
                   <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    N/A
+                    {avgGamesPerPlayer}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Avg Games/Player
@@ -351,7 +775,7 @@ export function ActiveSessionClient({
                 </div>
                 <div className="rounded-lg bg-blue-500/15 p-4">
                   <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    N/A
+                    {avgMatchMins !== null ? `${avgMatchMins}m` : "N/A"}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Avg Match Duration
@@ -384,40 +808,59 @@ export function ActiveSessionClient({
                             className="text-center p-2 px-3 font-medium cursor-pointer select-none"
                             onClick={() => handleSort("time")}
                           >
-                            Time <SortIcon field="time" />
+                            Last Game <SortIcon field="time" />
                           </th>
                           <th className="text-center p-2 px-3 font-medium">
-                            Location
+                            Where
                           </th>
                         </tr>
                       </thead>
                       <tbody>
-                        {sortedPlayers.map((sp) => (
-                          <tr key={sp.player_id} className="border-t">
-                            <td className="p-2 px-3">
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className="h-3 w-3 rounded-full shrink-0"
-                                  style={{
-                                    backgroundColor:
-                                      genderColours[sp.player?.gender ?? 2],
-                                  }}
-                                />
-                                {sp.player?.name ?? "Unknown"}
-                              </div>
-                            </td>
-                            <td className="p-2 px-3 text-center text-muted-foreground">
-                              0
-                            </td>
-                            <td className="p-2 px-3 text-center text-muted-foreground">
-                              N/A
-                            </td>
-                            <td className="p-2 px-3 text-center" title="On bench">
-                              🪑
-                            </td>
-                          </tr>
-                        ))}
-                        {sortedPlayers.length === 0 && (
+                        {sortedStatsPlayers.map((sp) => {
+                          const stats = playerStatsMap.get(sp.player_id);
+                          return (
+                            <tr key={sp.player_id} className="border-t">
+                              <td className="p-2 px-3">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className="h-3 w-3 rounded-full shrink-0"
+                                    style={{
+                                      backgroundColor:
+                                        genderColours[sp.player?.gender ?? 2],
+                                    }}
+                                  />
+                                  <span
+                                    className={
+                                      sp.is_active
+                                        ? ""
+                                        : "text-muted-foreground"
+                                    }
+                                  >
+                                    {sp.player?.name ?? "Unknown"}
+                                  </span>
+                                  {!sp.is_active && (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-[10px] px-1 py-0"
+                                    >
+                                      Out
+                                    </Badge>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-2 px-3 text-center text-muted-foreground">
+                                {stats?.gamesPlayed ?? 0}
+                              </td>
+                              <td className="p-2 px-3 text-center text-muted-foreground">
+                                {formatLastMatch(stats?.lastCompletedAt ?? 0)}
+                              </td>
+                              <td className="p-2 px-3 text-center text-muted-foreground text-xs">
+                                {getPlayerLocation(sp.player_id)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {sortedStatsPlayers.length === 0 && (
                           <tr>
                             <td
                               colSpan={4}
@@ -437,28 +880,186 @@ export function ActiveSessionClient({
         </AccordionItem>
       </Accordion>
 
-      {/* Courts */}
+      {/* ── Courts ─────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        {courts.map((courtNum) => (
-          <div
-            key={courtNum}
-            className="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-8"
-          >
-            <div className="h-16 w-16 rounded-full bg-teal-700/60 flex items-center justify-center">
-              <Activity className="h-7 w-7 text-teal-300" />
+        {courts.map((courtNum) => {
+          const match = localMatches.find(
+            (m) => m.state === 0 && m.court_number === courtNum
+          );
+          const courtName = getCourtName(courtNum);
+
+          if (match) {
+            const team1 = match.players.filter((mp) => mp.team_number === 1);
+            const team2 = match.players.filter((mp) => mp.team_number === 2);
+            return (
+              <div
+                key={courtNum}
+                className="rounded-lg border-2 border-green-600/40 bg-green-600/5 p-4 space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-sm text-green-400">
+                    {courtName}
+                  </p>
+                  <Badge className="bg-green-700/80 hover:bg-green-700/80 text-white gap-1 text-xs">
+                    <Activity className="h-3 w-3" />
+                    Playing
+                  </Badge>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
+                      Team 1
+                    </p>
+                    {team1.map((mp) => {
+                      const p = getPlayer(mp.player_id);
+                      return (
+                        <div
+                          key={mp.player_id}
+                          className="flex items-center gap-1.5"
+                        >
+                          <span
+                            className="h-2 w-2 rounded-full shrink-0"
+                            style={{
+                              backgroundColor:
+                                genderColours[p?.gender ?? 2],
+                            }}
+                          />
+                          <span>{p?.name ?? "Unknown"}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="text-center text-xs font-bold text-muted-foreground">
+                    vs
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
+                      Team 2
+                    </p>
+                    {team2.map((mp) => {
+                      const p = getPlayer(mp.player_id);
+                      return (
+                        <div
+                          key={mp.player_id}
+                          className="flex items-center gap-1.5"
+                        >
+                          <span
+                            className="h-2 w-2 rounded-full shrink-0"
+                            style={{
+                              backgroundColor:
+                                genderColours[p?.gender ?? 2],
+                            }}
+                          />
+                          <span>{p?.name ?? "Unknown"}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <Button
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setCompleteDialogMatch(match)}
+                >
+                  <Trophy className="mr-1 h-3 w-3" />
+                  Complete
+                </Button>
+              </div>
+            );
+          }
+
+          // Empty court
+          return (
+            <div
+              key={courtNum}
+              className="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-8"
+            >
+              <div className="h-16 w-16 rounded-full bg-teal-700/60 flex items-center justify-center">
+                <Activity className="h-7 w-7 text-teal-300" />
+              </div>
+              <p className="font-semibold text-teal-400">{courtName}</p>
+              <Badge className="bg-green-700/80 hover:bg-green-700/80 text-white gap-1.5">
+                <Check className="h-3 w-3" />
+                Available
+              </Badge>
             </div>
-            <p className="font-semibold text-teal-400">
-              {getCourtName(courtNum)}
-            </p>
-            <Badge className="bg-green-700/80 hover:bg-green-700/80 text-white gap-1.5">
-              <Check className="h-3 w-3" />
-              Available
-            </Badge>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Bench */}
+      {/* ── Draft Matches ──────────────────────────────────────────────────── */}
+      {draftMatches.length > 0 && (
+        <div className="rounded-lg border p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="h-5 w-5 text-muted-foreground" />
+            <h2 className="font-semibold">Draft Queue</h2>
+            <Badge variant="secondary">{draftMatches.length}</Badge>
+          </div>
+          <div className="space-y-2">
+            {draftMatches.map((match) => {
+              const team1 = match.players.filter((mp) => mp.team_number === 1);
+              const team2 = match.players.filter((mp) => mp.team_number === 2);
+              return (
+                <div
+                  key={match.id}
+                  className="flex items-center justify-between rounded-md border p-3 gap-3"
+                >
+                  <div className="text-sm flex-1 min-w-0">
+                    <span className="font-medium">
+                      {team1.map((mp) => getPlayerName(mp.player_id)).join(", ")}
+                    </span>
+                    <span className="text-muted-foreground mx-1">vs</span>
+                    <span className="font-medium">
+                      {team2.map((mp) => getPlayerName(mp.player_id)).join(", ")}
+                    </span>
+                  </div>
+                  {availableCourts.length === 0 ? (
+                    <Button size="sm" variant="outline" disabled>
+                      <Play className="h-3 w-3 mr-1" />
+                      No Courts
+                    </Button>
+                  ) : availableCourts.length === 1 ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        handleStartDraft(match.id, availableCourts[0])
+                      }
+                    >
+                      <Play className="h-3 w-3 mr-1" />
+                      Start
+                    </Button>
+                  ) : (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm" variant="outline">
+                          <Play className="h-3 w-3 mr-1" />
+                          Start
+                          <ChevronDown className="h-3 w-3 ml-1" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {availableCourts.map((court) => (
+                          <DropdownMenuItem
+                            key={court}
+                            onClick={() => handleStartDraft(match.id, court)}
+                          >
+                            {getCourtName(court)}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Bench ──────────────────────────────────────────────────────────── */}
       <div className="rounded-lg border p-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -477,9 +1078,22 @@ export function ActiveSessionClient({
             >
               <span
                 className="h-4 w-4 rounded-full shrink-0"
-                style={{ backgroundColor: genderColours[sp.player?.gender ?? 2] }}
+                style={{
+                  backgroundColor: genderColours[sp.player?.gender ?? 2],
+                }}
               />
-              <p className="font-medium ml-2">{sp.player?.name ?? "Unknown"}</p>
+              <p className="font-medium ml-2 flex-1">
+                {sp.player?.name ?? "Unknown"}
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground"
+                onClick={() => handleToggleActive(sp.player_id)}
+              >
+                <UserX className="h-3 w-3 mr-1" />
+                Sit Out
+              </Button>
             </div>
           ))}
           {benchPlayers.length === 0 && (
@@ -489,6 +1103,71 @@ export function ActiveSessionClient({
           )}
         </div>
       </div>
+
+      {/* ── Sitting Out ────────────────────────────────────────────────────── */}
+      {sittingOutPlayers.length > 0 && (
+        <div className="rounded-lg border p-4">
+          <div className="flex items-center gap-2 mb-4">
+            <UserX className="h-5 w-5 text-muted-foreground" />
+            <h2 className="font-semibold text-muted-foreground">Sitting Out</h2>
+            <Badge variant="secondary">{sittingOutPlayers.length}</Badge>
+          </div>
+          <div className="space-y-2">
+            {sittingOutPlayers.map((sp) => (
+              <div
+                key={sp.player_id}
+                className="flex items-center rounded-md border p-2 opacity-60"
+              >
+                <span
+                  className="h-4 w-4 rounded-full shrink-0"
+                  style={{
+                    backgroundColor: genderColours[sp.player?.gender ?? 2],
+                  }}
+                />
+                <p className="font-medium ml-2 flex-1">
+                  {sp.player?.name ?? "Unknown"}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => handleToggleActive(sp.player_id)}
+                >
+                  <UserCheck className="h-3 w-3 mr-1" />
+                  Rejoin
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Dialogs ────────────────────────────────────────────────────────── */}
+      <ManualMatchDialog
+        open={matchDialogOpen}
+        onClose={() => setMatchDialogOpen(false)}
+        mode={matchDialogMode}
+        benchPlayers={benchPlayers}
+        playersPerMatch={playersPerMatch}
+        availableCourts={availableCourts}
+        courtLabels={courtLabels}
+        onConfirm={(players, courtNumber) => {
+          setMatchDialogOpen(false);
+          handleCreateMatch(players, courtNumber);
+        }}
+      />
+
+      <CompleteMatchDialog
+        open={completeDialogMatch !== null}
+        onClose={() => setCompleteDialogMatch(null)}
+        match={completeDialogMatch}
+        getPlayerName={getPlayerName}
+        getCourtName={getCourtName}
+        onConfirm={(matchId, winningTeam, t1Score, t2Score) => {
+          setCompleteDialogMatch(null);
+          handleCompleteMatch(matchId, winningTeam, t1Score, t2Score);
+        }}
+      />
     </div>
   );
 }

@@ -22,7 +22,7 @@ export default async function ActiveSessionPage({
 
   const { data: club } = await supabase
     .from("clubs")
-    .select("id")
+    .select("id, game_type")
     .eq("slug", clubSlug)
     .single();
   if (!club) redirect("/clubs");
@@ -72,13 +72,51 @@ export default async function ActiveSessionPage({
     .select("court_number, label")
     .eq("session_id", sessionId);
 
+  // Load all matches for this session (all states for stats)
+  const { data: matchesRaw } = await supabase
+    .from("matches")
+    .select(
+      "id, court_number, state, was_automated, started_at, completed_at, team1_score, team2_score, winning_team"
+    )
+    .eq("session_id", sessionId);
+
+  const matchIds = matchesRaw?.map((m) => m.id) ?? [];
+
+  let matchPlayersRaw: Array<{
+    match_id: string;
+    player_id: string;
+    team_number: number;
+  }> = [];
+  if (matchIds.length > 0) {
+    const { data } = await supabase
+      .from("match_players")
+      .select("match_id, player_id, team_number")
+      .in("match_id", matchIds);
+    matchPlayersRaw = data ?? [];
+  }
+
+  const matches = (matchesRaw ?? []).map((m) => ({
+    id: m.id,
+    court_number: m.court_number,
+    state: m.state,
+    was_automated: m.was_automated,
+    started_at: m.started_at as string | null,
+    completed_at: m.completed_at as string | null,
+    team1_score: m.team1_score as number | null,
+    team2_score: m.team2_score as number | null,
+    winning_team: m.winning_team as number | null,
+    players: matchPlayersRaw.filter((mp) => mp.match_id === m.id),
+  }));
+
   return (
     <ActiveSessionClient
       sessionId={sessionId}
       clubSlug={clubSlug}
+      gameType={club.game_type}
       session={session}
       sessionPlayers={sessionPlayers}
       courtLabels={courtLabels ?? []}
+      matches={matches}
     />
   );
 }
