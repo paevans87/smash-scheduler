@@ -155,7 +155,10 @@ export function PlayerListClient({ clubId, clubSlug, planType, playerCount, skil
   return (
     <div className="space-y-6 px-4 py-6 md:px-6">
       <div className="flex items-center justify-between mb-2">
-        <h1 className="text-3xl font-bold">Players</h1>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Players</h1>
+          <p className="text-muted-foreground">Manage your club players</p>
+        </div>
         {canAddMore ? (
           <Link href={`/clubs/${clubSlug}/players/new`} className="inline-flex items-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-[var(--shadow-md)]">
             <UserPlus className="size-4" /> Add Player
@@ -189,16 +192,13 @@ export function PlayerListClient({ clubId, clubSlug, planType, playerCount, skil
         </div>
       )}
       {players.length > 0 && (
-      <Card className="border rounded-lg bg-muted mb-4">
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold text-muted-foreground">Filters</CardTitle>
-        </CardHeader>
-        <CardContent className={`grid grid-cols-1 ${skillType === 1 ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-8 p-4`}>
-          <div>
+      <Card className="border rounded-lg bg-muted mb-4 gap-0 py-4">        
+        <CardContent className="grid grid-cols-1 md:grid-cols-[280px_120px_140px] gap-2 px-4 pb-0 pt-1">
+          <div className="space-y-1.5">
             <Label>Name</Label>
             <Input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Search by name" />
           </div>
-          <div>
+          <div className="space-y-1.5">
             <Label>Gender</Label>
             <Select value={genderFilter} onValueChange={setGenderFilter}>
               <SelectTrigger><SelectValue placeholder="Any" /></SelectTrigger>
@@ -210,13 +210,13 @@ export function PlayerListClient({ clubId, clubSlug, planType, playerCount, skil
             </Select>
           </div>
           {skillType === 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label>Min Skill</Label>
               <Slider min={1} max={10} value={[minSkill]} onValueChange={([v]) => setMinSkill(v)} />
-              <div className="text-xs text-muted-foreground mt-1">Current: {minSkill}</div>
+              <div className="text-xs text-muted-foreground">Current: {minSkill}</div>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label>Skill Tier</Label>
               <Select value={tierFilter} onValueChange={setTierFilter}>
                 <SelectTrigger><SelectValue placeholder="Any" /></SelectTrigger>
