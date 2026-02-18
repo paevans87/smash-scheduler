@@ -16,10 +16,11 @@ import {
   type CompletedMatchRecord,
   type MatchCandidate,
   type ScoringWeights,
+  type MatchConfig,
   generateMatches,
   findBestReplacement,
   scoreGroup,
-  buildPairCounts,
+  buildGroupCounts,
   buildLastMatchTimes,
 } from "@/lib/matchmaking";
 
@@ -59,6 +60,9 @@ type Props = {
   playersPerMatch: number;
   selectedCourts: number[];
   courtLabels: CourtLabel[];
+  config?: MatchConfig;
+  mode?: "generate" | "draft"; // controls title and confirm button label
+  onManualFallback?: () => void; // shown in the empty state so the user can skip to manual
   onConfirm: (matches: ConfirmedMatch[]) => void;
 };
 
@@ -73,8 +77,15 @@ function getCourtName(num: number, labels: CourtLabel[]): string {
   return labels.find((l) => l.court_number === num)?.label ?? `Court ${num}`;
 }
 
+function scoreLabel(score: number): string {
+  if (score >= 85) return "Excellent";
+  if (score >= 70) return "Good";
+  if (score >= 50) return "Fair";
+  return "Poor";
+}
+
 function scoreBadgeClass(score: number): string {
-  if (score >= 75) return "bg-green-600 hover:bg-green-600 text-white";
+  if (score >= 70) return "bg-green-600 hover:bg-green-600 text-white";
   if (score >= 50) return "bg-yellow-500 hover:bg-yellow-500 text-white";
   return "bg-red-500 hover:bg-red-500 text-white";
 }
@@ -92,6 +103,9 @@ export function MatchPreviewDialog({
   playersPerMatch,
   selectedCourts,
   courtLabels,
+  config,
+  mode = "generate",
+  onManualFallback,
   onConfirm,
 }: Props) {
   const [proposals, setProposals] = useState<ProposalState[]>([]);
@@ -123,8 +137,8 @@ export function MatchPreviewDialog({
   }, [allBenchPlayers]);
 
   // Pre-compute history data (stable for the lifetime of this dialog open)
-  const pairCounts = useMemo(
-    () => buildPairCounts(completedMatches),
+  const groupCounts = useMemo(
+    () => buildGroupCounts(completedMatches),
     [completedMatches]
   );
   const lastMatchTimes = useMemo(
@@ -158,12 +172,20 @@ export function MatchPreviewDialog({
       .map((id) => playerMap.get(id))
       .filter(Boolean) as AlgorithmPlayer[];
     if (group.length < playersPerMatch) return 0;
+    const now = Date.now();
+    const maxWaitMs = allBenchPlayers.reduce((max, p) => {
+      const last = lastMatchTimes.get(p.id);
+      const waitMs = last != null ? now - last : 3_600_000;
+      return Math.max(max, waitMs);
+    }, 0);
     const { score } = scoreGroup(
       group,
-      pairCounts,
+      groupCounts,
       lastMatchTimes,
       weights,
-      Date.now()
+      now,
+      maxWaitMs,
+      config
     );
     return score;
   }
@@ -202,7 +224,8 @@ export function MatchPreviewDialog({
       pool,
       completedMatches,
       weights,
-      playersPerMatch
+      playersPerMatch,
+      config
     );
     if (!bestId) return;
 
@@ -250,7 +273,8 @@ export function MatchPreviewDialog({
       completedMatches,
       [courtNumber],
       weights,
-      playersPerMatch
+      playersPerMatch,
+      config
     );
     if (!results.length) return;
     const r = results[0];
@@ -275,7 +299,8 @@ export function MatchPreviewDialog({
       completedMatches,
       selectedCourts,
       weights,
-      playersPerMatch
+      playersPerMatch,
+      config
     );
     setProposals(
       results.map((r) => ({
@@ -319,14 +344,23 @@ export function MatchPreviewDialog({
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <DialogContent className="max-w-2xl w-full">
         <DialogHeader>
-          <DialogTitle>Generated Matches</DialogTitle>
+          <DialogTitle>
+            {mode === "draft" ? "Draft Proposals" : "Generated Matches"}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="overflow-y-auto max-h-[60vh] space-y-3 py-1 pr-1">
           {proposals.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-10">
-              No matches could be generated with the current bench players.
-            </p>
+            <div className="flex flex-col items-center gap-4 py-10 text-center">
+              <p className="text-sm text-muted-foreground">
+                No matches could be generated with the current bench players.
+              </p>
+              {onManualFallback && (
+                <Button variant="outline" size="sm" onClick={onManualFallback}>
+                  {mode === "draft" ? "Add Manual Draft" : "Add Manual Match"}
+                </Button>
+              )}
+            </div>
           ) : (
             proposals.map((proposal) => (
               <div
@@ -342,7 +376,7 @@ export function MatchPreviewDialog({
                     <Badge
                       className={`text-xs ${scoreBadgeClass(proposal.score)}`}
                     >
-                      {Math.round(proposal.score)}
+                      {scoreLabel(proposal.score)}
                     </Badge>
                   </div>
                   <Button
@@ -454,7 +488,9 @@ export function MatchPreviewDialog({
             Cancel
           </Button>
           <Button onClick={handleConfirm} disabled={!allComplete}>
-            Start {completeCount} {completeCount === 1 ? "Match" : "Matches"}
+            {mode === "draft"
+              ? `Add ${completeCount} to Draft`
+              : `Start ${completeCount} ${completeCount === 1 ? "Match" : "Matches"}`}
           </Button>
         </DialogFooter>
       </DialogContent>
